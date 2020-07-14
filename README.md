@@ -26,6 +26,7 @@ Lorem ipsum dolor sit amet, consectetur adipisicing elit. Incidunt iste ab unde 
 
 ## License
 
-```MIT License
+```
+MIT License
 Copyright (c) 2020 Gabriele Girelli
 ```
