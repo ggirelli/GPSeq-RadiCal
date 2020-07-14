@@ -22,7 +22,7 @@ When packages are missing, it provides the code to install the missing ones, one
 
 ## Contributing
 
-Lorem ipsum dolor sit amet, consectetur adipisicing elit. Incidunt iste ab unde ratione sint, ipsa vel ut autem reprehenderit cum quis velit commodi animi natus dolor recusandae accusantium. Voluptas, dolorem.
+*coming soon*
 
 ## License
 
