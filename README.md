@@ -1,16 +1,17 @@
 # GPSeq-RadiCal
-R script for fast and streamlined Radiality Calculation from GPSeq data.
+R script for fast and streamlined **Radi**ality **Cal**culation from **GPSeq** data. GPSeq-RadiCal aims to provide the same functionality as in the [gpseqc](https://github.com/ggirelli/gpseqc) Python3 package, but with much lower memory usage and faster computation times.
 
 ## Installation
 
 * Tested on R v3.6.3.
 * Required packages: argparser, data.table, logging, outliers, pbapply, rtracklayer.
 
-The script checks automatically for the required packages and provides the code to install the missing ones, one by one.
+The script checks automatically for the required packages.  
+When packages are missing, it provides the code to install the missing ones, one by one.
 
 ## Usage
 
-Lorem ipsum dolor sit amet, consectetur adipisicing elit. Doloremque dolore ipsa quos omnis, facere praesentium distinctio repellat veritatis consectetur adipisci quae perspiciatis quibusdam, ex optio consequatur ut numquam error quo.
+*coming soon*
 
 ## Missing features
 
