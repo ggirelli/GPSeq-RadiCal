@@ -1,0 +1,7 @@
+exid	cond	libid	fpath
+B223	1min	JC209	/media/MiSo/GPSeq/bed_files/BICRO223_JC209_1min_GG__cutsiteLoc-umiCount.bed.gz
+B223	2min	JC210	/media/MiSo/GPSeq/bed_files/BICRO223_JC210_2min_GG__cutsiteLoc-umiCount.bed.gz
+B223	5min	JC211	/media/MiSo/GPSeq/bed_files/BICRO223_JC211_5min_GG__cutsiteLoc-umiCount.bed.gz
+B223	10min	JC212	/media/MiSo/GPSeq/bed_files/BICRO223_JC212_10min_GG__cutsiteLoc-umiCount.bed.gz
+B223	30min	JC213	/media/MiSo/GPSeq/bed_files/BICRO223_JC213_30min_GG__cutsiteLoc-umiCount.bed.gz
+B223	1h	JC214	/media/MiSo/GPSeq/bed_files/BICRO223_JC214_1h_GG__cutsiteLoc-umiCount.bed.gz
