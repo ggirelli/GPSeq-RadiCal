@@ -1,4 +1,7 @@
 # GPSeq-RadiCal
+
+[![DOI](https://zenodo.org/badge/279701571.svg)](https://zenodo.org/badge/latestdoi/279701571)
+
 R script for fast and streamlined **Radi**ality **Cal**culation from **GPSeq** data. GPSeq-RadiCal aims to provide the same functionalities as the [gpseqc](https://github.com/ggirelli/gpseqc) Python3 package, but with much lower memory usage and faster computation times.
 
 ## Installation
