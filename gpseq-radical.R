@@ -129,13 +129,13 @@ otag2specs = function(otag) {
     return(bed_outlier_specs)
 }
 
-export_output = function(odata, odir, format, suffix, rmTag=FALSE) {
+export_output = function(odata, odir, format, suffix, rm_tag=FALSE) {
     assert("tag" %in% colnames(odata), "Cannot find required 'tag' column.")
     assert(format %in% c("tsv", "tsv.gz", "csv", "csv.gz", "rds"),
         sprintf("Unrecognized output format '%s'.", format))
     opath_base = sprintf("%s.bins_%s", suffix, gsub(":", "_", odata[1, tag]))
     columns_to_export = colnames(odata)
-    if (rmTag) columns_to_export = columns_to_export["tag" != columns_to_export]
+    if (rm_tag) columns_to_export = columns_to_export["tag" != columns_to_export]
     if ("rds" == format) {
         saveRDS(odata[, .SD, .SDcols=columns_to_export],
             file.path(odir, sprintf("%s.rds", opath_base)))
@@ -290,7 +290,7 @@ rescale_by_chr = function(estmd) {
 }
 
 export_rescaled_centrality = function(rscld, odir, format="tsv.gz") {
-    export_output(rscld, odir, format, "rescaled", rmTag=TRUE)
+    export_output(rscld, odir, format, "rescaled", rm_tag=TRUE)
 }
 
 # COMMON PARAMETERS ============================================================
