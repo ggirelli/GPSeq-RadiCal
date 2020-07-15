@@ -357,7 +357,7 @@ mask_binned = function(binned, args) {
         rtracklayer::import.bed(args$mask_bed))[, .(chrom=seqnames, start, end)]
     data.table::setkeyv(mask, bed3_colnames)
     if (args$chromosome_wide) {
-        logwarn("Skipped masking for chromosome-wide bins.")
+        logging::logwarn("Skipped masking for chromosome-wide bins.")
     }
     binned = pbapply::pblapply(binned, mask_track, cl=args$threads)
     if (1 <= args$export_level) {
@@ -370,7 +370,7 @@ mask_binned = function(binned, args) {
 rescale_estimated = function(estimated, args) {
     logging::loginfo(sprintf("Rescaling estimates... [%s]", args$normalize_by))
     if ("chr" == args$normalize_by) {
-        if (args$chromosome_wide) logwarn(
+        if (args$chromosome_wide) logging::logwarn(
             "Skipped rescaling by chromosome for chromosome-wide bins.")
         rescaled = pbapply::pblapply(estimated, function(estmd) {
             if ("chrom:wide" == estmd[1, tag]) return(estmd)
@@ -653,7 +653,7 @@ if ("universal" == args$site_domain) {
 
     data.table::setDTthreads(args$threads)
     if (args$threads != data.table::getDTthreads()) {
-        logwarn(sprintf("Changed from the requested %d to %d threads.",
+        logging::logwarn(sprintf("Changed from the requested %d to %d threads.",
             args$threads, data.table::getDTthreads()))
         args$threads = data.table::getDTthreads()
     }
