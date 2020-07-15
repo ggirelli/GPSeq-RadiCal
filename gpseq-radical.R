@@ -329,7 +329,7 @@ parser = argparser::add_argument(parser, arg="--ref-genome", help=paste0(
     default="hg19")
 
 parser = argparser::add_argument(parser, arg="--bin-tags",
-    help="Comma-separated bin tags. See description for more details.",
+    help="Comma-separated bin tags. Use --more-help for more details.",
     default="1e6:1e5,1e5")
 parser = argparser::add_argument(parser, arg="--bed-outlier-tag",
     help="Method:threshold for input bed outlier removal.",
@@ -344,7 +344,8 @@ parser = argparser::add_argument(parser, arg="--normalize-by", help=paste0(
     default="lib")
 
 parser = argparser::add_argument(parser, arg="--site-domain",
-    help="Site domain method.", default="separate")
+    help="Site domain method. Use --more-help for more detail.",
+    default="separate")
 parser = argparser::add_argument(parser, arg="--site-bed", help=paste0(
         "Path to bed file with recognition site locations for the enzyme ",
         "in use. This is required when using '--site-domain universe'."),
@@ -358,11 +359,8 @@ parser = argparser::add_argument(parser, arg="--threads", help=paste0(
         "Number of threads for parallelization. ",
         "Optimal when using at least one core per bed file."),
     default=1)
-parser = argparser::add_argument(parser, arg="--export-level", help=paste0(
-        "0: export only final results and statistics. ",
-        "1: export intermediate results. ",
-        "2: export supplementary files. ",
-        "3: export dcasted input."),
+parser = argparser::add_argument(parser, arg="--export-level",
+    help="Limits the amount of output. Use --more-help for more details",
     default=0)
 
 parser = argparser::add_argument(parser, arg="--chromosome-wide", flag=TRUE,
@@ -404,9 +402,38 @@ option. To skip outlier removal use '--bed-outlier-tag \"\"'.
 
 Moreover, centrality outliers are detected and used to rescale the final
 estimates when using the '--score-outlier-tag' option. To skip score rescaling
-use '--score-outlier-tag \"\"'.
+use '--score-outlier-tag \"\"'. Rescaling can be performed in a
+chromosome-wise or library-wise manner, by using the '--normalize-by chr' or
+'--normalize-by lib' options. The '--normalize-by' is also used for centrality
+calculation, even if rescaling is skipped.
+
+The '--site-domain' option can be used to specify which recognition sites to
+consider when estimating centrality. The default 'separate' domain considers all
+(non-outlier) sites with at least one mapped read in a condition. The 'union'
+domain considers all (non-outlier) sites with at least one mapped read in at
+least one condition. The 'intersection' domain retains only recognition sites
+with at least on mapped read in all conditions. The 'universe' domain considers
+all known recognition site locations in the reference genome. When using
+'--site-domain universe', a bed file with known recognition site locations must
+be provided using the '--site-bed' option.
+
+The output centrality estimation can be masked (masking performed after
+binning) to removed known problematic regions. Use the '--mask-bed' option to
+provide the path to a bed file with regions to be masked. A bin is masked if it
+overlaps with any regions in the provided mask bed file.
+
+The '--export-level' option is useful to limit the amount of output files
+produced by the script. The default export level is set to 0.
+ 0: export only final results and statistics.
+ 1: export intermediate results.
+ 2: export supplementary (bins) files.
+ 3: export dcasted input (bed, clean bed, domained bed).
+
+Finally, use the '--threads' option to specify how many threads to use for
+parallelization. An optimal number of threads coincides with the number of
+bed files in the input metadata file.
     \n")
-  quit()
+    quit()
 }
 
 args = argparser::parse_args(parser)
