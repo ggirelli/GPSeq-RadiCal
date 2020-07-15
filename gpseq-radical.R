@@ -626,7 +626,7 @@ if ("universal" == args$site_domain) {
     if (0 == nchar(args$score_outlier_tag)) {
         logging::loginfo(sprintf("Skipped rescaling."))
         logging::loginfo(sprintf("Exporting estimated centrality..."))
-        tmp = lapply(estimated, export_rescaled_centrality, args$output_folder,
+        tmp = lapply(estimated, export_estimated_centrality, args$output_folder,
             format="tsv.gz")
     } else {
         logging::loginfo(sprintf(
