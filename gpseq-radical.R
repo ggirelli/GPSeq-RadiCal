@@ -256,7 +256,7 @@ estimate_centrality = function(bbind, normalize_by) {
         .(pres=nreads/nsites/get(sprintf("%s_nreads", normalize_by))),
         by=c(bed3_colnames, "tag", "cid")]
     centr = bbind[order(chrom, start, cid), .(
-            score=sum(pres[1:(.N-1)]/pres[2:.N])
+            score=sum(pres[2:.N]/pres[1:(.N-1)])
         ), by=c(bed3_colnames, "tag")]
     return(centr)
 }
