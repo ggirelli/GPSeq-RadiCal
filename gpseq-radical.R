@@ -395,6 +395,7 @@ process_experiment = function(bbmeta, bins, cinfo, args) {
     exid = bbmeta[1, exid]
     logging::loginfo(sprintf("Processing experiment '%s'.", exid))
     args$exp_output_folder = file.path(args$output_folder, exid)
+    dir.create(args$exp_output_folder)
 
     logging::loginfo("Storing metadata.")
     data.table::fwrite(bbmeta,
