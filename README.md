@@ -25,7 +25,7 @@ When packages are missing, it provides the code to install the missing ones, one
 
 ## Contributing
 
-*coming soon*
+We welcome any contributions to `GPSeq-RadiCal`. Please, refer to the [contribution guidelines](CONTRIBUTING.md) if this is your first time contributing! Also, check out our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## License
 
