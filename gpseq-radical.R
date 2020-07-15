@@ -213,16 +213,16 @@ rm_bed_outliers = function(bd, args) {
     return(bd)
 }
 
-bin_bed_data = function(bbins, cond_cols, bd, site_domain, site_universe=NULL) {
+bin_bed_data = function(bbins, cond_cols, bd, args, site_universe=NULL) {
     logging::loginfo(sprintf("Binning... [%s]", bbins[1, tag]))
     binned = data.table::rbindlist(pbapply::pblapply(split(bd, bd$chrom),
-        bin_chromosome, cond_cols, bbins, site_domain, site_universe
+        bin_chromosome, cond_cols, bbins, args, site_universe
         ))[order(tag, chrom, start, cid)]
     return(binned)
 }
 
 bin_chromosome = function(bbd,
-        cond_cols, bins, site_domain, site_universe=NULL) {
+        cond_cols, bins, args, site_universe=NULL) {
     data.table::setkeyv(bins, bed3_colnames)
 
     selected_chromosome = bbd[1, chrom]
@@ -235,7 +235,7 @@ bin_chromosome = function(bbd,
     nreads[, cid := match(cid, cond_cols)]
     data.table::setkeyv(nreads, c(bed3_colnames, "tag", "cid"))
 
-    if ("universe" == site_domain) {
+    if ("universe" == args$site_domain) {
         assert(!is.null(site_universe),
             "Missing site universe data with site domain 'universe'.")
         nsites = data.table::foverlaps(
@@ -244,7 +244,7 @@ bin_chromosome = function(bbd,
                 tag=bins[1, tag], cid=seq_len(cond_cols), nsites=.N
             ), by=bed3_colnames]
     } else {
-        if ("union" == site_domain) {
+        if ("union" == args$site_domain) {
             nsites = ovlps[, lapply(.SD, function(x) length(x)),
                 by=c(bed3_colnames, "tag"), .SDcols=cond_cols
                 ][order(tag, chrom, start)]
@@ -260,8 +260,8 @@ bin_chromosome = function(bbd,
     data.table::setkeyv(nsites, c(bed3_colnames, "tag", "cid"))
 
     combined = nreads[nsites]
-    combined[, lib_nreads := as.numeric(total_lib_nreads)[cid]]
-    combined[, chr_nreads := as.numeric(total_chr_nreads[
+    combined[, lib_nreads := as.numeric(args$total_lib_nreads)[cid]]
+    combined[, chr_nreads := as.numeric(args$total_chr_nreads[
         selected_chromosome==chrom, .SD, .SDcols=cond_cols])[cid]]
 
     return(combined)
@@ -431,15 +431,15 @@ process_experiment = function(bbmeta, bins, cinfo, args) {
     # Calculate normalization factors ------------------------------------------
 
         logging::loginfo(sprintf("Calculating normalization factors."))
-        total_lib_nreads = bd[, lapply(.SD, sum), .SDcols=args$cond_cols]
-        total_chr_nreads = bd[, lapply(.SD, sum),
+        args$total_lib_nreads = bd[, lapply(.SD, sum), .SDcols=args$cond_cols]
+        args$total_chr_nreads = bd[, lapply(.SD, sum),
             by=chrom, .SDcols=args$cond_cols]
 
     # Assign to bins -----------------------------------------------------------
 
         bin_tags = bins[, unique(tag)]
         binned = by(bins, bins$tag, bin_bed_data,
-            args$cond_cols, bd, args$site_domain, site_universe)
+            args$cond_cols, bd, args, site_universe)
         if (1 <= args$export_level) {
             logging::loginfo(sprintf("Exporting binned bed data..."))
             tmp = lapply(binned, export_binned_bed_data, args$exp_output_folder)
