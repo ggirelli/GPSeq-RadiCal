@@ -135,7 +135,9 @@ export_output = function(odata, odir, format, suffix, rm_tag=FALSE) {
         sprintf("Unrecognized output format '%s'.", format))
     opath_base = sprintf("%s.bins_%s", suffix, gsub(":", "_", odata[1, tag]))
     columns_to_export = colnames(odata)
-    if (rm_tag) columns_to_export = columns_to_export["tag" != columns_to_export]
+    if (rm_tag) {
+        columns_to_export = columns_to_export["tag" != columns_to_export]
+    }
     if ("rds" == format) {
         saveRDS(odata[, .SD, .SDcols=columns_to_export],
             file.path(odir, sprintf("%s.rds", opath_base)))
