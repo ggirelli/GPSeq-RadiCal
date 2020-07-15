@@ -473,26 +473,33 @@ if ("universal" == args$site_domain) {
 
 # Get outlier stats ------------------------------------------------------------
 
-    logging::loginfo(sprintf(
-        "Calculating outlier stats. [%s]", args$bed_outlier_tag))
-    bed_outlier_specs = otag2specs(args$bed_outlier_tag)
-    outlier_stats = bd[, lapply(.SD,
-        get_condition_outliers_stats), .SDcols=cond_cols]
-    outlier_stats = data.table::data.table(t(outlier_stats))
-    colnames(outlier_stats) = c(names(summary(1)), "nout", "ntot")
-    outlier_stats_opath = file.path(args$output_folder, "outlier_stats.tsv")
-    logging::loginfo(sprintf(
-        "Exporting outlier stats to '%s'.", outlier_stats_opath))
-    data.table::fwrite(outlier_stats, outlier_stats_opath, sep="\t")
+    if (0 != nchar(args$bed_outlier_specs)) {
+        logging::loginfo(sprintf(
+            "Calculating outlier stats. [%s]", args$bed_outlier_tag))
+        bed_outlier_specs = otag2specs(args$bed_outlier_tag)
+        outlier_stats = bd[, lapply(.SD,
+            get_condition_outliers_stats), .SDcols=cond_cols]
+        outlier_stats = data.table::data.table(t(outlier_stats))
+        colnames(outlier_stats) = c(names(summary(1)), "nout", "ntot")
+        outlier_stats_opath = file.path(args$output_folder, "outlier_stats.tsv")
+        logging::loginfo(sprintf(
+            "Exporting outlier stats to '%s'.", outlier_stats_opath))
+        data.table::fwrite(outlier_stats, outlier_stats_opath, sep="\t")
+    }
 
 # Clean bed outliers -----------------------------------------------------------
 
-    logging::loginfo(sprintf("Removing outliers. [%s]", args$bed_outlier_tag))
-    bd[, c(cond_cols) := lapply(.SD, rm_condition_outliers), .SDcols=cond_cols]
-    bd = bd[0 != apply(bd[, .SD, .SDcols=cond_cols], MARGIN=1, FUN=sum)]
-    if (3 <= args$export_level) {
-        logging::loginfo("Exporting dcasted input bed after outlier removal...")
-        saveRDS(bd, file.path(args$output_folder, "clean_bed.rds"))
+    if (0 != nchar(args$bed_outlier_specs)) {
+        logging::loginfo(sprintf(
+            "Removing outliers. [%s]", args$bed_outlier_tag))
+        bd[, c(cond_cols) := lapply(.SD,
+            rm_condition_outliers), .SDcols=cond_cols]
+        bd = bd[0 != apply(bd[, .SD, .SDcols=cond_cols], MARGIN=1, FUN=sum)]
+        if (3 <= args$export_level) {
+            logging::loginfo(
+                "Exporting dcasted input bed after outlier removal...")
+            saveRDS(bd, file.path(args$output_folder, "clean_bed.rds"))
+        }
     }
 
 # Apply intersection site domain -----------------------------------------------

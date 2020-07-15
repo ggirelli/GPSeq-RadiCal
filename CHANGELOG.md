@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - The default `--bin-tags` parameter now include only `1e6:1e5,1e5`.
+- It is now possible to skip input bed outlier removal by using `--bed-outlier-tag ""`.
 
 ### Fixed
 - Centrality estimation is now using the proper ratio of condition pairs.
