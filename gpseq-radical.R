@@ -415,10 +415,11 @@ if ("universal" == args$site_domain) {
 
     cinfo = NULL
     if (is.na(args$cinfo_path)) {
-        logging::loginfo(sprintf("Querying UCSC for '%s' chromosome info.",
-            rtracklayer::genome(ucsc)))
+        logging::loginfo("Opening UCSC browser session...")
         ucsc = rtracklayer::browserSession("UCSC")
         rtracklayer::genome(ucsc) = args$ref_genome
+        logging::loginfo(sprintf("Querying UCSC for '%s' chromosome info...",
+            rtracklayer::genome(ucsc)))
         cinfo = data.table::data.table(rtracklayer::getTable(
             rtracklayer::ucscTableQuery(ucsc,
                 track="Chromosome Band", table="cytoBand")))
