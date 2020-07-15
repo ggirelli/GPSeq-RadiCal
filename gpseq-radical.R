@@ -359,7 +359,7 @@ mask_binned = function(binned, args) {
     if (args$chromosome_wide) {
         logging::logwarn("Skipped masking for chromosome-wide bins.")
     }
-    binned = pbapply::pblapply(binned, mask_track, cl=args$threads)
+    binned = pbapply::pblapply(binned, mask_track, mask, cl=args$threads)
     if (1 <= args$export_level) {
         logging::loginfo(sprintf("Exporting binned bed data..."))
         tmp = lapply(binned, export_masked_data, args$exp_output_folder)
