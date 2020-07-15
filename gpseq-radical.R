@@ -487,6 +487,8 @@ if ("universal" == args$site_domain) {
         logging::loginfo(sprintf(
             "Exporting outlier stats to '%s'.", outlier_stats_opath))
         data.table::fwrite(outlier_stats, outlier_stats_opath, sep="\t")
+    } else {
+        logging::loginfo(sprintf("Skipped outlier removal."))
     }
 
 # Clean bed outliers -----------------------------------------------------------
@@ -574,6 +576,7 @@ if ("universal" == args$site_domain) {
 # Rescale estimates ------------------------------------------------------------
 
     if (0 == nchar(args$score_outlier_tag)) {
+        logging::loginfo(sprintf("Skipped rescaling."))
         logging::loginfo(sprintf("Exporting estimated centrality..."))
         tmp = lapply(estimated, export_rescaled_centrality, args$output_folder,
             format="tsv.gz")
