@@ -193,7 +193,7 @@ calc_bed_outliers_stats = function(bd, args) {
         "Calculating outlier stats. [%s]", args$bed_outlier_tag))
     bed_outlier_specs = otag2specs(args$bed_outlier_tag)
     outlier_stats = bd[, lapply(.SD,
-        get_condition_outliers_stats), .SDcols=cond_cols]
+        get_condition_outliers_stats), .SDcols=args$cond_cols]
     outlier_stats = data.table::data.table(t(outlier_stats))
     colnames(outlier_stats) = c(names(summary(1)), "nout", "ntot")
     outlier_stats_opath = file.path(args$exp_output_folder, "outlier_stats.tsv")
@@ -205,9 +205,9 @@ calc_bed_outliers_stats = function(bd, args) {
 rm_bed_outliers = function(bd, args) {
     logging::loginfo(sprintf(
         "Removing outliers. [%s]", args$bed_outlier_tag))
-    bd[, c(cond_cols) := lapply(.SD,
-        rm_condition_outliers), .SDcols=cond_cols]
-    bd = bd[0 != apply(bd[, .SD, .SDcols=cond_cols], MARGIN=1, FUN=sum)]
+    bd[, c(args$cond_cols) := lapply(.SD,
+        rm_condition_outliers), .SDcols=args$cond_cols]
+    bd = bd[0 != apply(bd[, .SD, .SDcols=args$cond_cols], MARGIN=1, FUN=sum)]
     if (3 <= args$export_level) {
         logging::loginfo(
             "Exporting dcasted input bed after outlier removal...")
@@ -339,7 +339,7 @@ export_rescaled_centrality = function(rscld, odir, format="tsv.gz") {
 
 apply_intersection_site_domain = function(bd, args) {
     logging::loginfo("Retaining only sites shared across conditions...")
-    n_condition_empty = rowSums(0 == bd[, .SD, .SDcols=cond_cols])
+    n_condition_empty = rowSums(0 == bd[, .SD, .SDcols=args$cond_cols])
     bd = bd[0 == n_condition_empty]
     logging::loginfo(sprintf("Retained %d/%d (%.1f%%) common sites.",
         nrow(bd), length(n_condition_empty),
@@ -401,6 +401,8 @@ process_experiment = function(bbmeta, bins, cinfo, args) {
     data.table::fwrite(bbmeta,
         file.path(args$exp_output_folder, "bed.metadata.tsv"), sep="\t")
 
+    args$cond_cols = sprintf("cid_%d", seq_len(nrow(bbmeta)))
+
     # Read bed files -----------------------------------------------------------
 
         bd = parse_bed_meta(bbmeta, args)
@@ -432,14 +434,15 @@ process_experiment = function(bbmeta, bins, cinfo, args) {
     # Calculate normalization factors ------------------------------------------
 
         logging::loginfo(sprintf("Calculating normalization factors."))
-        total_lib_nreads = bd[, lapply(.SD, sum), .SDcols=cond_cols]
-        total_chr_nreads = bd[, lapply(.SD, sum), by=chrom, .SDcols=cond_cols]
+        total_lib_nreads = bd[, lapply(.SD, sum), .SDcols=args$cond_cols]
+        total_chr_nreads = bd[, lapply(.SD, sum),
+            by=chrom, .SDcols=args$cond_cols]
 
     # Assign to bins -----------------------------------------------------------
 
         bin_tags = bins[, unique(tag)]
         binned = by(bins, bins$tag, bin_bed_data,
-            cond_cols, bd, args$site_domain, site_universe)
+            args$cond_cols, bd, args$site_domain, site_universe)
         if (1 <= args$export_level) {
             logging::loginfo(sprintf("Exporting binned bed data..."))
             tmp = lapply(binned, export_binned_bed_data, args$exp_output_folder)
@@ -658,7 +661,6 @@ if ("universal" == args$site_domain) {
     logging::loginfo(sprintf("Parsing metadata from '%s'.", args$bmeta_path))
     bmeta = data.table::fread(args$bmeta_path)
     assert(2 < nrow(bmeta), "Provide at least two bed files.")
-    cond_cols = sprintf("cid_%d", seq_len(nrow(bmeta)))
     logging::loginfo("Storing metadata.")
     data.table::fwrite(bmeta,
         file.path(args$output_folder, "bed.metadata.tsv"), sep="\t")
