@@ -271,7 +271,7 @@ export_binned_bed_data = function(binned, odir, format="rds") {
     export_output(binned, odir, format, "binned")
 }
 
-mask_track = function(bbins) {
+mask_track = function(bbins, mask) {
     if ("chrom:wide" == bbins[1, tag]) return(bbins)
     data.table::setkeyv(bbins, bed3_colnames)
 
@@ -357,9 +357,9 @@ mask_binned = function(binned, args) {
         rtracklayer::import.bed(args$mask_bed))[, .(chrom=seqnames, start, end)]
     data.table::setkeyv(mask, bed3_colnames)
     if (args$chromosome_wide) {
-        logwarn("Skipped masking for chromosome-wide bins.")
+        logging::logwarn("Skipped masking for chromosome-wide bins.")
     }
-    binned = pbapply::pblapply(binned, mask_track, cl=args$threads)
+    binned = pbapply::pblapply(binned, mask_track, mask, cl=args$threads)
     if (1 <= args$export_level) {
         logging::loginfo(sprintf("Exporting binned bed data..."))
         tmp = lapply(binned, export_masked_data, args$exp_output_folder)
@@ -370,7 +370,7 @@ mask_binned = function(binned, args) {
 rescale_estimated = function(estimated, args) {
     logging::loginfo(sprintf("Rescaling estimates... [%s]", args$normalize_by))
     if ("chr" == args$normalize_by) {
-        if (args$chromosome_wide) logwarn(
+        if (args$chromosome_wide) logging::logwarn(
             "Skipped rescaling by chromosome for chromosome-wide bins.")
         rescaled = pbapply::pblapply(estimated, function(estmd) {
             if ("chrom:wide" == estmd[1, tag]) return(estmd)
@@ -466,8 +466,14 @@ process_experiment = function(bbmeta, bins, args) {
             logging::loginfo(sprintf("Exporting estimated centrality..."))
             tmp = lapply(estimated, export_estimated_centrality,
                 args$exp_output_folder, format="tsv.gz")
+            saveRDS(estimated, file.path(args$exp_output_folder,
+                "gpseq-radical.out.rds"))
+            return(estimated)
         } else {
             rescaled = rescale_estimated(estimated, args)
+            saveRDS(rescaled, file.path(args$exp_output_folder,
+                "gpseq-radical.out.rds"))
+            return(rescaled)
         }
 }
 
@@ -647,7 +653,7 @@ if ("universal" == args$site_domain) {
 
     data.table::setDTthreads(args$threads)
     if (args$threads != data.table::getDTthreads()) {
-        logwarn(sprintf("Changed from the requested %d to %d threads.",
+        logging::logwarn(sprintf("Changed from the requested %d to %d threads.",
             args$threads, data.table::getDTthreads()))
         args$threads = data.table::getDTthreads()
     }
@@ -712,7 +718,8 @@ if ("universal" == args$site_domain) {
 # Process one experiment at a time ---------------------------------------------
 
     assert("exid" %in% colnames(bmeta), "Missing 'exid' column from metadata.")
-    tmp = by(bmeta, bmeta$exid, process_experiment, bins, args)
+    output = by(bmeta, bmeta$exid, process_experiment, bins, args)
+    saveRDS(output, file.path(args$output_folder, "gpseq-radical.out.rds"))
 
 # ------------------------------------------------------------------------------
 
