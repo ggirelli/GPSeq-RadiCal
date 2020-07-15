@@ -3,7 +3,6 @@
 # ------------------------------------------------------------------------------
 # Author: Gabriele Girelli
 # Email: gigi.ga90@gmail.com
-# Version: 0.0.1
 # License: MIT - Copyright (c) 2020 Gabriele Girelli
 # ------------------------------------------------------------------------------
 
@@ -109,6 +108,21 @@ import_gpseq_bed = function(brid, bmeta) {
     o[, condition := sprintf("cid_%d", brid)]
 }
 
+parse_bed_meta = function(bbmeta, args) {
+    logging::loginfo(sprintf("Reading %d bed files.", nrow(bbmeta)))
+    bd = data.table::rbindlist(pbapply::pblapply(seq_len(nrow(bbmeta)),
+        import_gpseq_bed, bbmeta, cl=args$threads))
+    bd[, end := start]
+    logging::loginfo(sprintf("Dcasting bed data."))
+    bd = data.table::dcast(bd, chrom+start+end~condition,
+        value.var="score", fill=0)
+    if (3 <= args$export_level) {
+        logging::loginfo("Exporting dcasted input bed...")
+        saveRDS(bd, file.path(args$exp_output_folder, "input_bed.rds"))
+    }
+    return(bd)
+}
+
 otag2specs = function(otag) {
     outlier_specs = unlist(strsplit(otag, ":"))
     outlier_specs = outlier_specs[1:min(2, length(outlier_specs))]
@@ -154,36 +168,61 @@ export_output = function(odata, odir, format, suffix, rm_tag=FALSE) {
     }
 }
 
-get_condition_outliers_stats = function(x) {
+calc_condition_outliers_stats = function(x, specs) {
     x = x[0 != x]
     is_outlier = outliers::scores(x,
-        type=bed_outlier_specs$method,
-        prob=1-bed_outlier_specs$alpha,
-        lim=bed_outlier_specs$lim)
+        type=specs$method, prob=1-specs$alpha, lim=specs$lim)
     ostats = as.numeric(summary(x[is_outlier]))
     ostats = c(ostats, sum(is_outlier), length(x))
     return(ostats)
 }
 
-rm_condition_outliers = function(x) {
+rm_condition_outliers = function(x, specs) {
     is_outlier = outliers::scores(x[0 != x],
-        type=bed_outlier_specs$method,
-        prob=1-bed_outlier_specs$alpha,
-        lim=bed_outlier_specs$lim)
+        type=specs$method, prob=1-specs$alpha, lim=specs$lim)
     x[which(0 != x)[is_outlier]] = 0
     return(x)
 }
 
-bin_bed_data = function(bbins, cond_cols, bd, site_domain, site_universe=NULL) {
+calc_bed_outliers_stats = function(bd, args) {
+    logging::loginfo(sprintf(
+        "Calculating outlier stats. [%s]", args$bed_outlier_tag))
+    outlier_stats = bd[, lapply(.SD,
+        calc_condition_outliers_stats, otag2specs(args$bed_outlier_tag)),
+        .SDcols=args$cond_cols]
+    outlier_stats = data.table::data.table(t(outlier_stats))
+    colnames(outlier_stats) = c(names(summary(1)), "nout", "ntot")
+    outlier_stats_opath = file.path(args$exp_output_folder, "outlier_stats.tsv")
+    logging::loginfo(sprintf(
+        "Exporting outlier stats to '%s'.", outlier_stats_opath))
+    data.table::fwrite(outlier_stats, outlier_stats_opath, sep="\t")
+}
+
+rm_bed_outliers = function(bd, args) {
+    logging::loginfo(sprintf(
+        "Removing outliers. [%s]", args$bed_outlier_tag))
+    bd[, c(args$cond_cols) := lapply(.SD,
+        rm_condition_outliers, otag2specs(args$bed_outlier_tag)),
+        .SDcols=args$cond_cols]
+    bd = bd[0 != apply(bd[, .SD, .SDcols=args$cond_cols], MARGIN=1, FUN=sum)]
+    if (3 <= args$export_level) {
+        logging::loginfo(
+            "Exporting dcasted input bed after outlier removal...")
+        saveRDS(bd, file.path(args$exp_output_folder, "clean_bed.rds"))
+    }
+    return(bd)
+}
+
+bin_bed_data = function(bbins, cond_cols, bd, args, site_universe=NULL) {
     logging::loginfo(sprintf("Binning... [%s]", bbins[1, tag]))
     binned = data.table::rbindlist(pbapply::pblapply(split(bd, bd$chrom),
-        bin_chromosome, cond_cols, bbins, site_domain, site_universe
+        bin_chromosome, cond_cols, bbins, args, site_universe
         ))[order(tag, chrom, start, cid)]
     return(binned)
 }
 
-bin_chromosome = function(bbd,
-        cond_cols, bins, site_domain, site_universe=NULL) {
+bin_chromosome = function(
+    bbd, cond_cols, bins, args, site_universe=NULL) {
     data.table::setkeyv(bins, bed3_colnames)
 
     selected_chromosome = bbd[1, chrom]
@@ -196,7 +235,7 @@ bin_chromosome = function(bbd,
     nreads[, cid := match(cid, cond_cols)]
     data.table::setkeyv(nreads, c(bed3_colnames, "tag", "cid"))
 
-    if ("universe" == site_domain) {
+    if ("universe" == args$site_domain) {
         assert(!is.null(site_universe),
             "Missing site universe data with site domain 'universe'.")
         nsites = data.table::foverlaps(
@@ -205,7 +244,7 @@ bin_chromosome = function(bbd,
                 tag=bins[1, tag], cid=seq_len(cond_cols), nsites=.N
             ), by=bed3_colnames]
     } else {
-        if ("union" == site_domain) {
+        if ("union" == args$site_domain) {
             nsites = ovlps[, lapply(.SD, function(x) length(x)),
                 by=c(bed3_colnames, "tag"), .SDcols=cond_cols
                 ][order(tag, chrom, start)]
@@ -221,8 +260,8 @@ bin_chromosome = function(bbd,
     data.table::setkeyv(nsites, c(bed3_colnames, "tag", "cid"))
 
     combined = nreads[nsites]
-    combined[, lib_nreads := as.numeric(total_lib_nreads)[cid]]
-    combined[, chr_nreads := as.numeric(total_chr_nreads[
+    combined[, lib_nreads := as.numeric(args$total_lib_nreads)[cid]]
+    combined[, chr_nreads := as.numeric(args$total_chr_nreads[
         selected_chromosome==chrom, .SD, .SDcols=cond_cols])[cid]]
 
     return(combined)
@@ -270,9 +309,9 @@ export_estimated_centrality = function(centr, odir, format="rds") {
 }
 
 calc_rescale_factor_by_lib = function(estmd, specs) {
-    estmd[!is.na(score), outlier_status := outliers::scores(
-        estmd[!is.na(score), score], type=score_outlier_specs$method,
-        prob=1-score_outlier_specs$alpha, lim=score_outlier_specs$lim)]
+    estmd[!is.na(score),
+        outlier_status := outliers::scores(estmd[!is.na(score), score],
+            type=specs$method, prob=1-specs$alpha, lim=specs$lim)]
     lowest = estmd[FALSE == outlier_status, min(score, na.rm = T)]
     highest = estmd[FALSE == outlier_status, max(score-lowest, na.rm = T)]
     estmd[, outlier_status := NULL]
@@ -293,6 +332,143 @@ rescale_by_chr = function(estmd, specs) {
 
 export_rescaled_centrality = function(rscld, odir, format="tsv.gz") {
     export_output(rscld, odir, format, "rescaled", rm_tag=TRUE)
+}
+
+apply_intersection_site_domain = function(bd, args) {
+    logging::loginfo("Retaining only sites shared across conditions...")
+    n_condition_empty = rowSums(0 == bd[, .SD, .SDcols=args$cond_cols])
+    bd = bd[0 == n_condition_empty]
+    logging::loginfo(sprintf("Retained %d/%d (%.1f%%) common sites.",
+        nrow(bd), length(n_condition_empty),
+        nrow(bd)/length(n_condition_empty)*100))
+    if (3 <= args$export_level) {
+        logging::loginfo(
+            "Exporting dcasted input bed after site intersection...")
+        saveRDS(bd, file.path(args$exp_output_folder,
+            "clean_bed.intersected.rds"))
+    }
+    return(bd)
+}
+
+mask_binned = function(binned, args) {
+    assert(file.exists(args$mask_bed),
+        sprintf("Cannot find mask bed file '%s'.", args$mask_bed))
+    mask = data.table::as.data.table(
+        rtracklayer::import.bed(args$mask_bed))[, .(chrom=seqnames, start, end)]
+    data.table::setkeyv(mask, bed3_colnames)
+    if (args$chromosome_wide) {
+        logwarn("Skipped masking for chromosome-wide bins.")
+    }
+    binned = pbapply::pblapply(binned, mask_track, cl=args$threads)
+    if (1 <= args$export_level) {
+        logging::loginfo(sprintf("Exporting binned bed data..."))
+        tmp = lapply(binned, export_masked_data, args$exp_output_folder)
+    }
+    return(binned)
+}
+
+rescale_estimated = function(estimated, args) {
+    logging::loginfo(sprintf("Rescaling estimates... [%s]", args$normalize_by))
+    if ("chr" == args$normalize_by) {
+        if (args$chromosome_wide) logwarn(
+            "Skipped rescaling by chromosome for chromosome-wide bins.")
+        rescaled = pbapply::pblapply(estimated, function(estmd) {
+            if ("chrom:wide" == estmd[1, tag]) return(estmd)
+            estmd = rescale_by_chr(estmd, otag2specs(args$score_outlier_tag))
+        }, cl=args$threads)
+    }
+    if ("lib" == args$normalize_by) {
+        rescaled = pbapply::pblapply(estimated, function(estmd) {
+            estmd = rescale_by_lib(estmd, otag2specs(args$score_outlier_tag))
+        }, cl=args$threads)
+    }
+    logging::loginfo(sprintf("Exporting rescaled centrality..."))
+    tmp = lapply(rescaled, export_rescaled_centrality, args$exp_output_folder)
+    return(rescaled)
+}
+
+process_experiment = function(bbmeta, bins, args) {
+    exid = bbmeta[1, exid]
+    logging::loginfo(sprintf("Processing experiment '%s'.", exid))
+    args$exp_output_folder = file.path(args$output_folder, exid)
+    dir.create(args$exp_output_folder)
+
+    logging::loginfo("Storing metadata.")
+    data.table::fwrite(bbmeta,
+        file.path(args$exp_output_folder, "bed.metadata.tsv"), sep="\t")
+
+    args$cond_cols = sprintf("cid_%d", seq_len(nrow(bbmeta)))
+
+    # Read bed files -----------------------------------------------------------
+
+        bd = parse_bed_meta(bbmeta, args)
+
+    # Get outlier stats --------------------------------------------------------
+
+        if (0 != nchar(args$bed_outlier_tag)) {
+            calc_bed_outliers_stats(bd, args)
+        } else {
+            logging::loginfo(sprintf("Skipped outlier removal."))
+        }
+
+    # Clean bed outliers -------------------------------------------------------
+
+        if (0 != nchar(args$bed_outlier_tag)) bd = rm_bed_outliers(bd, args)
+
+    # Apply intersection site domain -------------------------------------------
+
+        if ("intersection" == args$site_domain) {
+            bd = apply_intersection_site_domain(bd, args)
+        } else if ("universe" == args$site_domain) {
+            logging::loginfo(sprintf(
+                "Reading site bed file '%s'", args$site_bed))
+            site_universe = data.table::as.data.table(
+                rtracklayer::import.bed(args$site_bed))[,
+                    .(chrom=seqnames, start, end=start)]
+        }
+
+    # Calculate normalization factors ------------------------------------------
+
+        logging::loginfo(sprintf("Calculating normalization factors."))
+        args$total_lib_nreads = bd[, lapply(.SD, sum), .SDcols=args$cond_cols]
+        args$total_chr_nreads = bd[, lapply(.SD, sum),
+            by=chrom, .SDcols=args$cond_cols]
+
+    # Assign to bins -----------------------------------------------------------
+
+        bin_tags = bins[, unique(tag)]
+        binned = by(bins, bins$tag, bin_bed_data,
+            args$cond_cols, bd, args, site_universe)
+        if (1 <= args$export_level) {
+            logging::loginfo(sprintf("Exporting binned bed data..."))
+            tmp = lapply(binned, export_binned_bed_data, args$exp_output_folder)
+        }
+
+    # Masking track ------------------------------------------------------------
+
+        if (!is.na(args$mask_bed)) binned = mask_binned(binned, args)
+
+    # Calculate centrality -----------------------------------------------------
+
+        logging::loginfo(sprintf("Estimating centrality..."))
+        estimated = pbapply::pblapply(
+            binned, estimate_centrality, args$normalize_by, cl=args$threads)
+        if (1 <= args$export_level) {
+            logging::loginfo(sprintf("Exporting estimated centrality..."))
+            tmp = lapply(estimated,
+                export_estimated_centrality, args$exp_output_folder)
+        }
+
+    # Rescale estimates --------------------------------------------------------
+
+        if (0 == nchar(args$score_outlier_tag)) {
+            logging::loginfo(sprintf("Skipped rescaling."))
+            logging::loginfo(sprintf("Exporting estimated centrality..."))
+            tmp = lapply(estimated, export_estimated_centrality,
+                args$exp_output_folder, format="tsv.gz")
+        } else {
+            rescaled = rescale_estimated(estimated, args)
+        }
 }
 
 # COMMON PARAMETERS ============================================================
@@ -330,7 +506,7 @@ parser = argparser::add_argument(parser, arg="--ref-genome", help=paste0(
 
 parser = argparser::add_argument(parser, arg="--bin-tags",
     help="Comma-separated bin tags. Use --more-help for more details.",
-    default="1e6:1e5,1e5")
+    default="1e6:1e5,1e5:1e4")
 parser = argparser::add_argument(parser, arg="--bed-outlier-tag",
     help="Method:threshold for input bed outlier removal.",
     default="chisq:0.01")
@@ -481,7 +657,6 @@ if ("universal" == args$site_domain) {
     logging::loginfo(sprintf("Parsing metadata from '%s'.", args$bmeta_path))
     bmeta = data.table::fread(args$bmeta_path)
     assert(2 < nrow(bmeta), "Provide at least two bed files.")
-    cond_cols = sprintf("cid_%d", seq_len(nrow(bmeta)))
     logging::loginfo("Storing metadata.")
     data.table::fwrite(bmeta,
         file.path(args$output_folder, "bed.metadata.tsv"), sep="\t")
@@ -534,147 +709,10 @@ if ("universal" == args$site_domain) {
         saveRDS(bins, file.path(args$output_folder, "bins.rds"))
     }
 
-# Read bed files ---------------------------------------------------------------
+# Process one experiment at a time ---------------------------------------------
 
-    logging::loginfo(sprintf("Reading %d bed files.", nrow(bmeta)))
-    bd = data.table::rbindlist(pbapply::pblapply(seq_len(nrow(bmeta)),
-        import_gpseq_bed, bmeta, cl=args$threads))
-    bd[, end := start]
-    logging::loginfo(sprintf("Dcasting bed data."))
-    bd = data.table::dcast(bd, chrom+start+end~condition,
-        value.var="score", fill=0)
-    if (3 <= args$export_level) {
-        logging::loginfo("Exporting dcasted input bed...")
-        saveRDS(bd, file.path(args$output_folder, "input_bed.rds"))
-    }
-
-# Get outlier stats ------------------------------------------------------------
-
-    if (0 != nchar(args$bed_outlier_tag)) {
-        logging::loginfo(sprintf(
-            "Calculating outlier stats. [%s]", args$bed_outlier_tag))
-        bed_outlier_specs = otag2specs(args$bed_outlier_tag)
-        outlier_stats = bd[, lapply(.SD,
-            get_condition_outliers_stats), .SDcols=cond_cols]
-        outlier_stats = data.table::data.table(t(outlier_stats))
-        colnames(outlier_stats) = c(names(summary(1)), "nout", "ntot")
-        outlier_stats_opath = file.path(args$output_folder, "outlier_stats.tsv")
-        logging::loginfo(sprintf(
-            "Exporting outlier stats to '%s'.", outlier_stats_opath))
-        data.table::fwrite(outlier_stats, outlier_stats_opath, sep="\t")
-    } else {
-        logging::loginfo(sprintf("Skipped outlier removal."))
-    }
-
-# Clean bed outliers -----------------------------------------------------------
-
-    if (0 != nchar(args$bed_outlier_tag)) {
-        logging::loginfo(sprintf(
-            "Removing outliers. [%s]", args$bed_outlier_tag))
-        bd[, c(cond_cols) := lapply(.SD,
-            rm_condition_outliers), .SDcols=cond_cols]
-        bd = bd[0 != apply(bd[, .SD, .SDcols=cond_cols], MARGIN=1, FUN=sum)]
-        if (3 <= args$export_level) {
-            logging::loginfo(
-                "Exporting dcasted input bed after outlier removal...")
-            saveRDS(bd, file.path(args$output_folder, "clean_bed.rds"))
-        }
-    }
-
-# Apply intersection site domain -----------------------------------------------
-
-    if ("intersection" == args$site_domain) {
-        logging::loginfo("Retaining only sites shared across conditions...")
-        n_condition_empty = rowSums(0 == bd[, .SD, .SDcols=cond_cols])
-        bd = bd[0 == n_condition_empty]
-        logging::loginfo(sprintf("Retained %d/%d (%.1f%%) common sites.",
-            nrow(bd), length(n_condition_empty),
-            nrow(bd)/length(n_condition_empty)*100))
-        if (3 <= args$export_level) {
-            logging::loginfo(
-                "Exporting dcasted input bed after site intersection...")
-            saveRDS(bd, file.path(args$output_folder,
-                "clean_bed.intersected.rds"))
-        }
-    } else if ("universe" == args$site_domain) {
-        logging::loginfo(sprintf("Reading site bed file '%s'", args$site_bed))
-        site_universe = data.table::as.data.table(
-            rtracklayer::import.bed(args$site_bed))[,
-                .(chrom=seqnames, start, end=start)]
-    }
-
-# Calculate normalization factors ----------------------------------------------
-
-    logging::loginfo(sprintf("Calculating normalization factors."))
-    total_lib_nreads = bd[, lapply(.SD, sum), .SDcols=cond_cols]
-    total_chr_nreads = bd[, lapply(.SD, sum), by=chrom, .SDcols=cond_cols]
-
-# Assign to bins ---------------------------------------------------------------
-
-    bin_tags = bins[, unique(tag)]
-    binned = by(bins, bins$tag, bin_bed_data,
-        cond_cols, bd, args$site_domain, site_universe)
-    if (1 <= args$export_level) {
-        logging::loginfo(sprintf("Exporting binned bed data..."))
-        tmp = lapply(binned, export_binned_bed_data, args$output_folder)
-    }
-
-# Masking track ----------------------------------------------------------------
-
-    if (!is.na(args$mask_bed)) {
-        assert(file.exists(args$mask_bed),
-            sprintf("Cannot find mask bed file '%s'.", args$mask_bed))
-        mask = data.table::as.data.table(
-            rtracklayer::import.bed(args$mask_bed))[,
-            .(chrom=seqnames, start, end)]
-        data.table::setkeyv(mask, bed3_colnames)
-        if (args$chromosome_wide) {
-            logwarn("Skipped masking for chromosome-wide bins.")
-        }
-        binned = pbapply::pblapply(binned, mask_track, cl=args$threads)
-        if (1 <= args$export_level) {
-            logging::loginfo(sprintf("Exporting binned bed data..."))
-            tmp = lapply(binned, export_masked_data, args$output_folder)
-        }
-    }
-
-# Calculate centrality ---------------------------------------------------------
-
-    logging::loginfo(sprintf("Estimating centrality..."))
-    estimated = pbapply::pblapply(
-        binned, estimate_centrality, args$normalize_by, cl=args$threads)
-    if (1 <= args$export_level) {
-        logging::loginfo(sprintf("Exporting estimated centrality..."))
-        tmp = lapply(estimated, export_estimated_centrality, args$output_folder)
-    }
-
-# Rescale estimates ------------------------------------------------------------
-
-    if (0 == nchar(args$score_outlier_tag)) {
-        logging::loginfo(sprintf("Skipped rescaling."))
-        logging::loginfo(sprintf("Exporting estimated centrality..."))
-        tmp = lapply(estimated, export_estimated_centrality, args$output_folder,
-            format="tsv.gz")
-    } else {
-        logging::loginfo(sprintf(
-            "Rescaling estimates... [%s]", args$normalize_by))
-        score_outlier_specs = otag2specs(args$score_outlier_tag)
-        if ("chr" == args$normalize_by) {
-            if (args$chromosome_wide) logwarn(
-                "Skipped rescaling by chromosome for chromosome-wide bins.")
-            rescaled = pbapply::pblapply(estimated, function(estmd) {
-                if ("chrom:wide" == estmd[1, tag]) return(estmd)
-                estmd = rescale_by_chr(estmd, score_outlier_specs)
-            }, cl=args$threads)
-        }
-        if ("lib" == args$normalize_by) {
-            rescaled = pbapply::pblapply(estimated, function(estmd) {
-                estmd = rescale_by_lib(estmd, score_outlier_specs)
-            }, cl=args$threads)
-        }
-        logging::loginfo(sprintf("Exporting rescaled centrality..."))
-        tmp = lapply(rescaled, export_rescaled_centrality, args$output_folder)
-    }
+    assert("exid" %in% colnames(bmeta), "Missing 'exid' column from metadata.")
+    tmp = by(bmeta, bmeta$exid, process_experiment, bins, args)
 
 # ------------------------------------------------------------------------------
 
