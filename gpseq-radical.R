@@ -409,7 +409,7 @@ if ("universal" == args$site_domain) {
     cond_cols = sprintf("cid_%d", seq_len(nrow(bmeta)))
     logging::loginfo("Storing metadata.")
     data.table::fwrite(bmeta,
-        file.path(args$output_folder, "bed.metadata.tsv"), "\t")
+        file.path(args$output_folder, "bed.metadata.tsv"), sep="\t")
 
 # Read chromosome info bed -----------------------------------------------------
 
