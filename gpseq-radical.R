@@ -572,24 +572,30 @@ if ("universal" == args$site_domain) {
 
 # Rescale estimates ------------------------------------------------------------
 
-    logging::loginfo(sprintf("Rescaling estimates... [%s]", args$normalize_by))
-    score_outlier_specs = otag2specs(args$score_outlier_tag)
-    if ("chr" == args$normalize_by) {
-        if (args$chromosome_wide) {
-            logwarn("Skipped rescaling by chromosome for chromosome-wide bins.")
+    if (0 == nchar(args$score_outlier_tag)) {
+        logging::loginfo(sprintf("Exporting estimated centrality..."))
+        tmp = lapply(estimated, export_rescaled_centrality, args$output_folder,
+            format="tsv.gz")
+    } else {
+        logging::loginfo(sprintf(
+            "Rescaling estimates... [%s]", args$normalize_by))
+        score_outlier_specs = otag2specs(args$score_outlier_tag)
+        if ("chr" == args$normalize_by) {
+            if (args$chromosome_wide) logwarn(
+                "Skipped rescaling by chromosome for chromosome-wide bins.")
+            rescaled = pbapply::pblapply(estimated, function(estmd) {
+                if ("chrom:wide" == estmd[1, tag]) return(estmd)
+                estmd = rescale_by_chr(estmd)
+            }, cl=args$threads)
         }
-        rescaled = pbapply::pblapply(estimated, function(estmd) {
-            if ("chrom:wide" == estmd[1, tag]) return(estmd)
-            estmd = rescale_by_chr(estmd)
-        }, cl=args$threads)
+        if ("lib" == args$normalize_by) {
+            rescaled = pbapply::pblapply(estimated, function(estmd) {
+                estmd = rescale_by_lib(estmd)
+            }, cl=args$threads)
+        }
+        logging::loginfo(sprintf("Exporting rescaled centrality..."))
+        tmp = lapply(rescaled, export_rescaled_centrality, args$output_folder)
     }
-    if ("lib" == args$normalize_by) {
-        rescaled = pbapply::pblapply(estimated, function(estmd) {
-            estmd = rescale_by_lib(estmd)
-        }, cl=args$threads)
-    }
-    logging::loginfo(sprintf("Exporting rescaled centrality..."))
-    tmp = lapply(rescaled, export_rescaled_centrality, args$output_folder)
 
 # ------------------------------------------------------------------------------
 
