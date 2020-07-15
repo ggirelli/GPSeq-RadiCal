@@ -408,7 +408,8 @@ if ("universal" == args$site_domain) {
     assert(2 < nrow(bmeta), "Provide at least two bed files.")
     cond_cols = sprintf("cid_%d", seq_len(nrow(bmeta)))
     logging::loginfo("Storing metadata.")
-    fwrite(bmeta, file.path(args$output_folder, "bed.metadata.tsv"), "\t")
+    data.table::fwrite(bmeta,
+        file.path(args$output_folder, "bed.metadata.tsv"), "\t")
 
 # Read chromosome info bed -----------------------------------------------------
 
