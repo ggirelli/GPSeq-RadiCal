@@ -28,7 +28,7 @@ Then, to run with default parameters, execute the following command:
 
 Replacing `example_meta.tsv` with your metadata file path, and `output_folder` with the path where the script should write the output. Note that the specified output folder must not already exist.
 
-For a full detailed parameter explanation, run the following:
+To access the script help page, run the following:
 
 ```
 ./gpseq-radical.R -h

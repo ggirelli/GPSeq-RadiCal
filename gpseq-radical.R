@@ -302,7 +302,18 @@ outlier_methods = c("z", "t", "chisq", "iqr", "mad")
 
 # INPUT ========================================================================
 
-parser = argparser::arg_parser("...", name="gpseq-radical.R")
+parser = argparser::arg_parser("
+Provide the path to a 4-columns tabulation-separated metadata file, containing
+the sequencing run ID, a condition description, the library ID, and full
+absolute path to each BED file (possibly gzipped) from the GPSeq experiment.
+The bed files should be reported in order of condition strength, with the top
+rows being *weaker* than bottom ones. Also, the first line should contain the
+column headers: exid, cond, libid, and path. An example metadata file would be
+is available at
+https://github.com/ggirelli/GPSeq-RadiCal/blob/master/example_meta.tsv.
+
+Fore more details, use the '--more-help' option.
+", name="gpseq-radical.R")
 
 parser = argparser::add_argument(parser, arg="bmeta_path",
     help="Path to bed metadata tsv file.")
@@ -359,9 +370,46 @@ parser = argparser::add_argument(parser, arg="--chromosome-wide", flag=TRUE,
 parser = argparser::add_argument(parser, arg="--elongate-ter-bin", flag=TRUE,
     help=paste0("Use this option to elongate chromosome-terminal bins ",
         "and have equally-sized bins."))
+parser = argparser::add_argument(parser, arg="--more-help", flag=TRUE,
+    help="Show extended help page and exit")
+
+if ("--more-help" %in% commandArgs(trailingOnly=TRUE)) {
+    cat("
+Provide the path to a 4-columns tabulation-separated metadata file, containing
+the sequencing run ID, a condition description, the library ID, and full
+absolute path to each BED file (possibly gzipped) from the GPSeq experiment.
+The bed files should be reported in order of condition strength, with the top
+rows being *weaker* than bottom ones. Also, the first line should contain the
+column headers: exid, cond, libid, and path. An example metadata file would be
+is available at
+https://github.com/ggirelli/GPSeq-RadiCal/blob/master/example_meta.tsv.
+
+Binning can be specified by providing comma-separated bin 'tags', in the format
+of 'bin_size:bin_step' or 'bin_size'. If 'bin_step' is not specified, the bins
+are generated in a non-overlapping manner. Use the '--chromosome-wide' option to
+estimated centrality also on chromosome-wide bins. Use the '--elongate-ter-bin'
+option to elongate chromosome terminal bins to the specified bin size, the
+default behaviour is for terminal bins' end to coincide with the chromosome end.
+
+Outlier removal method can be specified with the 'method:threshold' format.
+Available methods: z, t, chisq, iqr, and mad. The specified threshold is an
+alpha threshold on the outlier score p-value for the z, t, chisq, and mad
+methods, and should thus be 0 < threshold < 1. In the case of the iqr method,
+outliers are identified by comparing their distance to the closest quartile (Q1
+or Q3) and the product threshold*iqr. More details are available here:
+https://www.rdocumentation.org/packages/outliers/versions/0.14/topics/scores
+
+Outliers can be removed from input bed files by using the '--bed-outlier-tag'
+option. To skip outlier removal use '--bed-outlier-tag \"\"'.
+
+Moreover, centrality outliers are detected and used to rescale the final
+estimates when using the '--score-outlier-tag' option. To skip score rescaling
+use '--score-outlier-tag \"\"'.
+    \n")
+  quit()
+}
 
 args = argparser::parse_args(parser)
-
 assert(args$normalize_by %in% c("chr", "lib"),
     sprintf("Unrecognized 'normalize_by' value: '%s'", args$normalize_by))
 assert(args$site_domain %in% c("separate", "union", "intersection", "universe"),

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Assert for at least 2 bed files in input.
 - The input metadata table is now automatically copied to the output folder.
 - Help page description.
+- Full detail help apge with `--more-help`.
 
 ### Changed
 - The default `--bin-tags` parameter now include only `1e6:1e5,1e5`.
