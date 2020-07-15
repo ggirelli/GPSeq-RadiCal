@@ -168,22 +168,18 @@ export_output = function(odata, odir, format, suffix, rm_tag=FALSE) {
     }
 }
 
-get_condition_outliers_stats = function(x) {
+calc_condition_outliers_stats = function(x, specs) {
     x = x[0 != x]
     is_outlier = outliers::scores(x,
-        type=bed_outlier_specs$method,
-        prob=1-bed_outlier_specs$alpha,
-        lim=bed_outlier_specs$lim)
+        type=specs$method, prob=1-specs$alpha, lim=specs$lim)
     ostats = as.numeric(summary(x[is_outlier]))
     ostats = c(ostats, sum(is_outlier), length(x))
     return(ostats)
 }
 
-rm_condition_outliers = function(x) {
+rm_condition_outliers = function(x, specs) {
     is_outlier = outliers::scores(x[0 != x],
-        type=bed_outlier_specs$method,
-        prob=1-bed_outlier_specs$alpha,
-        lim=bed_outlier_specs$lim)
+        type=specs$method, prob=1-specs$alpha, lim=specs$lim)
     x[which(0 != x)[is_outlier]] = 0
     return(x)
 }
@@ -191,9 +187,9 @@ rm_condition_outliers = function(x) {
 calc_bed_outliers_stats = function(bd, args) {
     logging::loginfo(sprintf(
         "Calculating outlier stats. [%s]", args$bed_outlier_tag))
-    bed_outlier_specs = otag2specs(args$bed_outlier_tag)
     outlier_stats = bd[, lapply(.SD,
-        get_condition_outliers_stats), .SDcols=args$cond_cols]
+        calc_condition_outliers_stats, otag2specs(args$bed_outlier_tag)),
+        .SDcols=args$cond_cols]
     outlier_stats = data.table::data.table(t(outlier_stats))
     colnames(outlier_stats) = c(names(summary(1)), "nout", "ntot")
     outlier_stats_opath = file.path(args$exp_output_folder, "outlier_stats.tsv")
@@ -206,7 +202,8 @@ rm_bed_outliers = function(bd, args) {
     logging::loginfo(sprintf(
         "Removing outliers. [%s]", args$bed_outlier_tag))
     bd[, c(args$cond_cols) := lapply(.SD,
-        rm_condition_outliers), .SDcols=args$cond_cols]
+        rm_condition_outliers, otag2specs(args$bed_outlier_tag)),
+        .SDcols=args$cond_cols]
     bd = bd[0 != apply(bd[, .SD, .SDcols=args$cond_cols], MARGIN=1, FUN=sum)]
     if (3 <= args$export_level) {
         logging::loginfo(
