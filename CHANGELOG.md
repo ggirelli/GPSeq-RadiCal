@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.0.4]
 ## Added
 - Additional merged rds output.
 
@@ -36,6 +38,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.0.1] - 2020-07-15
 
 [Unreleased]: https://github.com/ggirelli/gpseq-img-py  
+[0.0.4]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.4
 [0.0.3]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.3
 [0.0.2]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.2
 [0.0.1]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.1
