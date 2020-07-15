@@ -466,8 +466,14 @@ process_experiment = function(bbmeta, bins, args) {
             logging::loginfo(sprintf("Exporting estimated centrality..."))
             tmp = lapply(estimated, export_estimated_centrality,
                 args$exp_output_folder, format="tsv.gz")
+            saveRDS(estimated, file.path(args$exp_output_folder,
+                "gpseq-radical.out.rds"))
+            return(estimated)
         } else {
             rescaled = rescale_estimated(estimated, args)
+            saveRDS(rescaled, file.path(args$exp_output_folder,
+                "gpseq-radical.out.rds"))
+            return(rescaled)
         }
 }
 
@@ -712,7 +718,8 @@ if ("universal" == args$site_domain) {
 # Process one experiment at a time ---------------------------------------------
 
     assert("exid" %in% colnames(bmeta), "Missing 'exid' column from metadata.")
-    tmp = by(bmeta, bmeta$exid, process_experiment, bins, args)
+    output = by(bmeta, bmeta$exid, process_experiment, bins, args)
+    saveRDS(output, file.path(args$output_folder, "gpseq-radical.out.rds"))
 
 # ------------------------------------------------------------------------------
 
