@@ -387,7 +387,7 @@ rescale_estimated = function(estimated, args) {
     return(rescaed)
 }
 
-process_experiment = function(bbmeta, bins, cinfo, args) {
+process_experiment = function(bbmeta, bins, args) {
     exid = bbmeta[1, exid]
     logging::loginfo(sprintf("Processing experiment '%s'.", exid))
     args$exp_output_folder = file.path(args$output_folder, exid)
@@ -712,7 +712,7 @@ if ("universal" == args$site_domain) {
 # Process one experiment at a time ---------------------------------------------
 
     assert("exid" %in% colnames(bmeta), "Missing 'exid' column from metadata.")
-    tmp = by(bmeta, bmeta$exid, process_experiment, bins, cinfo, args)
+    tmp = by(bmeta, bmeta$exid, process_experiment, bins, args)
 
 # ------------------------------------------------------------------------------
 
