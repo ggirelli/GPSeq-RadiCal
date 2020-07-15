@@ -271,7 +271,7 @@ export_binned_bed_data = function(binned, odir, format="rds") {
     export_output(binned, odir, format, "binned")
 }
 
-mask_track = function(bbins) {
+mask_track = function(bbins, mask) {
     if ("chrom:wide" == bbins[1, tag]) return(bbins)
     data.table::setkeyv(bbins, bed3_colnames)
 

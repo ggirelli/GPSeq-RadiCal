@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Added
 - Additional merged rds output.
 
+## Fixed
+- Solved score masking crashes due to missing argument passing.
+
 ## [0.0.3] - 2020-07-15
 ### Changed
 - Now using `exid` from input metadata and running one experiment at a time.
