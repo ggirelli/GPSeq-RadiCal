@@ -221,8 +221,8 @@ bin_bed_data = function(bbins, cond_cols, bd, args, site_universe=NULL) {
     return(binned)
 }
 
-bin_chromosome = function(bbd,
-        cond_cols, bins, args, site_universe=NULL) {
+bin_chromosome = function(
+    bbd, cond_cols, bins, args, site_universe=NULL) {
     data.table::setkeyv(bins, bed3_colnames)
 
     selected_chromosome = bbd[1, chrom]
@@ -309,9 +309,9 @@ export_estimated_centrality = function(centr, odir, format="rds") {
 }
 
 calc_rescale_factor_by_lib = function(estmd, specs) {
-    estmd[!is.na(score), outlier_status := outliers::scores(
-        estmd[!is.na(score), score], type=score_outlier_specs$method,
-        prob=1-score_outlier_specs$alpha, lim=score_outlier_specs$lim)]
+    estmd[!is.na(score),
+        outlier_status := outliers::scores(estmd[!is.na(score), score],
+            type=specs$method, prob=1-specs$alpha, lim=specs$lim)]
     lowest = estmd[FALSE == outlier_status, min(score, na.rm = T)]
     highest = estmd[FALSE == outlier_status, max(score-lowest, na.rm = T)]
     estmd[, outlier_status := NULL]
@@ -369,18 +369,17 @@ mask_binned = function(binned, args) {
 
 rescale_estimated = function(estimated, args) {
     logging::loginfo(sprintf("Rescaling estimates... [%s]", args$normalize_by))
-    score_outlier_specs = otag2specs(args$score_outlier_tag)
     if ("chr" == args$normalize_by) {
         if (args$chromosome_wide) logwarn(
             "Skipped rescaling by chromosome for chromosome-wide bins.")
         rescaled = pbapply::pblapply(estimated, function(estmd) {
             if ("chrom:wide" == estmd[1, tag]) return(estmd)
-            estmd = rescale_by_chr(estmd, score_outlier_specs)
+            estmd = rescale_by_chr(estmd, otag2specs(args$score_outlier_tag))
         }, cl=args$threads)
     }
     if ("lib" == args$normalize_by) {
         rescaled = pbapply::pblapply(estimated, function(estmd) {
-            estmd = rescale_by_lib(estmd, score_outlier_specs)
+            estmd = rescale_by_lib(estmd, otag2specs(args$score_outlier_tag))
         }, cl=args$threads)
     }
     logging::loginfo(sprintf("Exporting rescaled centrality..."))
