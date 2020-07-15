@@ -475,7 +475,7 @@ if ("universal" == args$site_domain) {
 
 # Get outlier stats ------------------------------------------------------------
 
-    if (0 != nchar(args$bed_outlier_specs)) {
+    if (0 != nchar(args$bed_outlier_tag)) {
         logging::loginfo(sprintf(
             "Calculating outlier stats. [%s]", args$bed_outlier_tag))
         bed_outlier_specs = otag2specs(args$bed_outlier_tag)
@@ -491,7 +491,7 @@ if ("universal" == args$site_domain) {
 
 # Clean bed outliers -----------------------------------------------------------
 
-    if (0 != nchar(args$bed_outlier_specs)) {
+    if (0 != nchar(args$bed_outlier_tag)) {
         logging::loginfo(sprintf(
             "Removing outliers. [%s]", args$bed_outlier_tag))
         bd[, c(cond_cols) := lapply(.SD,
