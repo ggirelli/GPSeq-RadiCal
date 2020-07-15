@@ -384,7 +384,7 @@ rescale_estimated = function(estimated, args) {
     }
     logging::loginfo(sprintf("Exporting rescaled centrality..."))
     tmp = lapply(rescaled, export_rescaled_centrality, args$exp_output_folder)
-    return(rescaed)
+    return(rescaled)
 }
 
 process_experiment = function(bbmeta, bins, args) {
