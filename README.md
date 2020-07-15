@@ -11,7 +11,28 @@ When packages are missing, it provides the code to install the missing ones, one
 
 ## Usage
 
-*coming soon*
+First, prepare a tabulation-separated metadata file with four columns:
+
+* `exid`: sequencing run ID.
+* `cond`: condition description (e.g., time and/or concentration).
+* `libid`: library ID.
+* `fpath`: full absolute path to bed file. Bed files can be gzipped (recommended).
+
+The bed files should be reported in order of condition strength, with the top rows being *weaker* than bottom ones. Also, the first line should contain the column headers. An example metadata file can be found [here](example_meta.tsv).
+
+Then, to run with default parameters, execute the following command:
+
+```
+./gpseq-radical.R example_meta.tsv output_folder
+```
+
+Replacing `example_meta.tsv` with your metadata file path, and `output_folder` with the path where the script should write the output. Note that the specified output folder must not already exist.
+
+For a full detailed parameter explanation, run the following:
+
+```
+./gpseq-radical.R -h
+```
 
 ## Differences from `gpseqc`
 
