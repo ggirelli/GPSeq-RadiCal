@@ -34,7 +34,7 @@ and follow the issue template that should automatically load up.
 
 If you would like to see a new feature implemented in `GPSeq-RadiCal`,
 or to have an already existing feature improved, please use the GitHub
-[issue tracker](https://github.com/ggirelli/gpseq_ce/issues) and follow the template that should automatically load up.
+[issue tracker](https://github.com/ggirelli/GPSeq-RadiCal/issues) and follow the template that should automatically load up.
 
 # Style your contributions
 
