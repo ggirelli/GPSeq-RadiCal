@@ -99,6 +99,8 @@ mkbins = function(brid, bspecs, cinfo, elongate_ter_bin=FALSE) {
 }
 
 import_gpseq_bed = function(brid, bmeta) {
+    assert("fpath" %in% colnames(brmeta),
+        "Missing 'fpath' column in metadata file.")
     brmeta = data.table::copy(bmeta[brid])
     o = data.table::as.data.table(rtracklayer::import.bed(brmeta$fpath))
     data.table::setnames(o, "seqnames", "chrom")
