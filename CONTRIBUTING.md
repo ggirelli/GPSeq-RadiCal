@@ -43,3 +43,5 @@ We like to have `GPSeq-RadiCal` code styled according to the following style gui
 - We use Lintr to test the style of our code.
 - Line length should be 80 or less characters.
 - Refrain from using `library`, `require`, `source`.
+
+Use the provided `gpseq-radical-lint.R` script to validate your code changes.
