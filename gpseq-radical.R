@@ -110,23 +110,23 @@ import_gpseq_bed = function(brid, bmeta) {
 }
 
 otag2specs = function(otag) {
-    bed_outlier_specs = unlist(strsplit(args$bed_outlier_tag, ":"))
-    bed_outlier_specs = bed_outlier_specs[1:min(2, length(bed_outlier_specs))]
-    bed_outlier_specs = data.table::as.data.table(t(bed_outlier_specs))
-    colnames(bed_outlier_specs) = c("method", "threshold")
-    bed_outlier_specs[, method := tolower(method)]
-    bed_outlier_specs[, threshold := as.numeric(threshold)]
-    assert(bed_outlier_specs$method %in% outlier_methods,
-        sprintf("Unrecognized outlier method '%s'.", bed_outlier_specs$method))
-    bed_outlier_specs$alpha = .5  # Default
-    bed_outlier_specs$lim = 1.5   # Default
-    if (bed_outlier_specs$method == "iqr") {
-        bed_outlier_specs[, lim := threshold]
+    outlier_specs = unlist(strsplit(otag, ":"))
+    outlier_specs = outlier_specs[1:min(2, length(outlier_specs))]
+    outlier_specs = data.table::as.data.table(t(outlier_specs))
+    colnames(outlier_specs) = c("method", "threshold")
+    outlier_specs[, method := tolower(method)]
+    outlier_specs[, threshold := as.numeric(threshold)]
+    assert(outlier_specs$method %in% outlier_methods,
+        sprintf("Unrecognized outlier method '%s'.", outlier_specs$method))
+    outlier_specs$alpha = .5  # Default
+    outlier_specs$lim = 1.5   # Default
+    if (outlier_specs$method == "iqr") {
+        outlier_specs[, lim := threshold]
     } else {
-        bed_outlier_specs[, alpha := threshold]
+        outlier_specs[, alpha := threshold]
     }
-    bed_outlier_specs[, threshold := NULL]
-    return(bed_outlier_specs)
+    outlier_specs[, threshold := NULL]
+    return(outlier_specs)
 }
 
 export_output = function(odata, odir, format, suffix, rm_tag=FALSE) {
@@ -269,7 +269,7 @@ export_estimated_centrality = function(centr, odir, format="rds") {
     export_output(centr, odir, format, "estimated")
 }
 
-calc_rescale_factor_by_lib = function(estmd) {
+calc_rescale_factor_by_lib = function(estmd, specs) {
     estmd[!is.na(score), outlier_status := outliers::scores(
         estmd[!is.na(score), score], type=score_outlier_specs$method,
         prob=1-score_outlier_specs$alpha, lim=score_outlier_specs$lim)]
@@ -279,16 +279,16 @@ calc_rescale_factor_by_lib = function(estmd) {
     return(c(lowest, highest))
 }
 
-rescale_by_lib = function(estmd) {
-    rescaling_factors = calc_rescale_factor_by_lib(estmd)
+rescale_by_lib = function(estmd, specs) {
+    rescaling_factors = calc_rescale_factor_by_lib(estmd, specs)
     estmd[, score := .(score - rescaling_factors[1])]
     estmd[, score := .(score / rescaling_factors[2])]
     estmd[, score := 2**score]
     return(estmd)
 }
 
-rescale_by_chr = function(estmd) {
-    data.table::rbindlist(by(estmd, estmd$chrom, rescale_by_lib))
+rescale_by_chr = function(estmd, specs) {
+    data.table::rbindlist(by(estmd, estmd$chrom, rescale_by_lib, specs))
 }
 
 export_rescaled_centrality = function(rscld, odir, format="tsv.gz") {
@@ -637,12 +637,12 @@ if ("universal" == args$site_domain) {
                 "Skipped rescaling by chromosome for chromosome-wide bins.")
             rescaled = pbapply::pblapply(estimated, function(estmd) {
                 if ("chrom:wide" == estmd[1, tag]) return(estmd)
-                estmd = rescale_by_chr(estmd)
+                estmd = rescale_by_chr(estmd, score_outlier_specs)
             }, cl=args$threads)
         }
         if ("lib" == args$normalize_by) {
             rescaled = pbapply::pblapply(estimated, function(estmd) {
-                estmd = rescale_by_lib(estmd)
+                estmd = rescale_by_lib(estmd, score_outlier_specs)
             }, cl=args$threads)
         }
         logging::loginfo(sprintf("Exporting rescaled centrality..."))

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Centrality estimation is now using the proper ratio of condition pairs.
+- Using specified score outlier tag for rescaling purposes, previously using bed outlier tag due to a bug.
 
 ## [0.0.1] - 2020-07-15
 
