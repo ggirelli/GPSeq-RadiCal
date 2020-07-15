@@ -315,7 +315,7 @@ parser = argparser::add_argument(parser, arg="--ref-genome", help=paste0(
 
 parser = argparser::add_argument(parser, arg="--bin-tags",
     help="Comma-separated bin tags. See description for more details.",
-    default="1e6:1e5,1e5,1e4")
+    default="1e6:1e5,1e5")
 parser = argparser::add_argument(parser, arg="--bed-outlier-tag",
     help="Method:threshold for input bed outlier removal.",
     default="chisq:0.01")
