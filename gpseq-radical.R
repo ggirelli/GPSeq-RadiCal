@@ -449,6 +449,8 @@ if ("universal" == args$site_domain) {
     logging::loginfo(sprintf("Parsing metadata from '%s'.", args$bmeta_path))
     bmeta = data.table::fread(args$bmeta_path)
     cond_cols = sprintf("cid_%d", seq_len(nrow(bmeta)))
+    loginfo("Storing metadata.")
+    fwrite(bmeta, file.path(args$output_folder, "bed.metadata.tsv"), "\t")
 
 # Read bed files ---------------------------------------------------------------
 
