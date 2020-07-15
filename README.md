@@ -13,6 +13,11 @@ When packages are missing, it provides the code to install the missing ones, one
 
 *coming soon*
 
+## Differences from `gpseqc`
+
+* Allows for normalization in a chromosome-wise fashion too, instead of only library-wise.
+* Normalization factors are calculated **after** outlier removal, not before.
+
 ## Missing features
 
 * Store input metadata in output folder.
