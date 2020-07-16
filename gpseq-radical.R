@@ -282,28 +282,6 @@ export_binned_bed_data = function(binned, odir, format="rds") {
     export_output(binned, odir, format, "binned")
 }
 
-mask_track = function(bbins, mask) {
-    if ("chrom:wide" == bbins[1, tag]) {
-        logging::logwarn("Skipped masking for chromosome-wide bins.")
-        return(bbins)
-    }
-    data.table::setkeyv(bbins, bed3_colnames)
-
-    masked = unique(data.table::foverlaps(bbins, mask)[,
-        .(tag, nreads, nsites, lib_nreads, chr_nreads,
-            mask_overlaps=.N, mask_overlapped=!is.na(start)),
-        by=c(bed3_colnames[1], paste0("i.", bed3_colnames[2:3]),  "cid")])
-    data.table::setnames(masked,
-        paste0("i.", bed3_colnames[2:3]), bed3_colnames[2:3])
-
-    masked[!(mask_overlapped), mask_overlaps := 0]
-    masked[, mask_overlapped := NULL]
-    masked[0 < mask_overlaps, c("nreads", "nsites") := .(0, 0)]
-    masked[, mask_overlaps := NULL]
-
-    return(masked)
-}
-
 export_masked_data = function(masked, odir, format="rds") {
     export_output(masked, odir, format, "binned_masked")
 }
@@ -364,6 +342,53 @@ apply_intersection_site_domain = function(bd, args) {
     return(bd)
 }
 
+mask_dcasted_bed = function(bd, args) {
+    assert(file.exists(args$mask_bed),
+        sprintf("Cannot find mask bed file '%s'.", args$mask_bed))
+    mask = data.table::as.data.table(
+        rtracklayer::import.bed(args$mask_bed))[, .(chrom=seqnames, start, end)]
+    assert(all(mask[, start <= end]), sprintf(
+        "Mask not conforming to end >= start condition on row: %d",
+        which(mask[, start > end])))
+    data.table::setkeyv(mask, bed3_colnames)
+    data.table::setkeyv(bd, bed3_colnames)
+    masked = data.table::foverlaps(bd, mask)
+    masked[!is.na(start), c(args$cond_cols) := lapply(.SD, function(x) {
+            x = 0
+            return(x)
+        }), .SDcols=args$cond_cols]
+    masked = masked[, bed3_colnames[2:3] := .(NULL, NULL)]
+    data.table::setnames(masked,
+        paste0("i.", bed3_colnames[2:3]), bed3_colnames[2:3])
+    if (3 <= args$export_level) {
+        logging::loginfo("Exporting masked dcasted input bed...")
+        saveRDS(masked, file.path(args$exp_output_folder, "masked_bed.rds"))
+    }
+    return(masked)
+}
+
+mask_binned_track = function(bbins, mask) {
+    if ("chrom:wide" == bbins[1, tag]) {
+        logging::logwarn("Skipped masking for chromosome-wide bins.")
+        return(bbins)
+    }
+    data.table::setkeyv(bbins, bed3_colnames)
+
+    masked = unique(data.table::foverlaps(bbins, mask)[,
+        .(tag, nreads, nsites, lib_nreads, chr_nreads,
+            mask_overlaps=.N, mask_overlapped=!is.na(start)),
+        by=c(bed3_colnames[1], paste0("i.", bed3_colnames[2:3]),  "cid")])
+    data.table::setnames(masked,
+        paste0("i.", bed3_colnames[2:3]), bed3_colnames[2:3])
+
+    masked[!(mask_overlapped), mask_overlaps := 0]
+    masked[, mask_overlapped := NULL]
+    masked[0 < mask_overlaps, c("nreads", "nsites") := .(0, 0)]
+    masked[, mask_overlaps := NULL]
+
+    return(masked)
+}
+
 mask_binned = function(binned, args) {
     assert(file.exists(args$mask_bed),
         sprintf("Cannot find mask bed file '%s'.", args$mask_bed))
@@ -373,7 +398,7 @@ mask_binned = function(binned, args) {
         "Mask not conforming to end >= start condition on row: %d",
         which(mask[, start > end])))
     data.table::setkeyv(mask, bed3_colnames)
-    binned = pbapply::pblapply(binned, mask_track, mask, cl=args$threads)
+    binned = pbapply::pblapply(binned, mask_binned_track, mask, cl=args$threads)
     if (1 <= args$export_level) {
         logging::loginfo(sprintf("Exporting binned bed data..."))
         tmp = lapply(binned, export_masked_data, args$exp_output_folder)
@@ -450,7 +475,7 @@ process_experiment = function(bbmeta, bins, args) {
 
     # Masking bed --------------------------------------------------------------
 
-    
+        if (!is.na(args$mask_bed)) bd = mask_dcasted_bed(bd, args)
 
     # Assign to bins -----------------------------------------------------------
 
@@ -460,10 +485,6 @@ process_experiment = function(bbmeta, bins, args) {
             logging::loginfo(sprintf("Exporting binned bed data..."))
             tmp = lapply(binned, export_binned_bed_data, args$exp_output_folder)
         }
-
-    # Masking track ------------------------------------------------------------
-
-        if (!is.na(args$mask_bed)) binned = mask_binned(binned, args)
 
     # Calculate centrality -----------------------------------------------------
 
