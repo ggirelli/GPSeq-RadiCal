@@ -283,7 +283,10 @@ export_binned_bed_data = function(binned, odir, format="rds") {
 }
 
 mask_track = function(bbins, mask) {
-    if ("chrom:wide" == bbins[1, tag]) return(bbins)
+    if ("chrom:wide" == bbins[1, tag]) {
+        logging::logwarn("Skipped masking for chromosome-wide bins.")
+        return(bbins)
+    }
     data.table::setkeyv(bbins, bed3_colnames)
 
     masked = unique(data.table::foverlaps(bbins, mask)[,
@@ -367,9 +370,6 @@ mask_binned = function(binned, args) {
     mask = data.table::as.data.table(
         rtracklayer::import.bed(args$mask_bed))[, .(chrom=seqnames, start, end)]
     data.table::setkeyv(mask, bed3_colnames)
-    if (args$chromosome_wide) {
-        logging::logwarn("Skipped masking for chromosome-wide bins.")
-    }
     binned = pbapply::pblapply(binned, mask_track, mask, cl=args$threads)
     if (1 <= args$export_level) {
         logging::loginfo(sprintf("Exporting binned bed data..."))
