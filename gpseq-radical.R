@@ -513,6 +513,9 @@ parser = argparser::add_argument(parser, arg="--ref-genome", help=paste0(
 parser = argparser::add_argument(parser, arg="--bin-tags",
     help="Comma-separated bin tags. Use --more-help for more details.",
     default="1e6:1e5,1e5:1e4")
+parser = argparser::add_argument(parser, arg="--bin-bed",
+    help="Path to bed with regions on which to build bins.")
+
 parser = argparser::add_argument(parser, arg="--bed-outlier-tag",
     help="Method:threshold for input bed outlier removal.",
     default="chisq:0.01")
@@ -570,6 +573,14 @@ are generated in a non-overlapping manner. Use the '--chromosome-wide' option to
 estimated centrality also on chromosome-wide bins. Use the '--elongate-ter-bin'
 option to elongate chromosome terminal bins to the specified bin size, the
 default behaviour is for terminal bins' end to coincide with the chromosome end.
+
+Using the '--bin-bed' option. it is also possible to provide a bed file with
+regions of interest on which to build the bins. The bins are built with the bin
+sizes specified in '--bin-tag' and centered on the midpoint of the regions of
+interest. In other words, the bin step information is disregarded entirely. This
+can be used, for example, to estimate radiality of FISH probe regions. When
+using '--bin-bed', options '--cinfo-path', '--ref-genome', '--chromosome-wide',
+and '--elongate-ter-bin' are ignored.
 
 Outlier removal method can be specified with the 'method:threshold' format.
 Available methods: z, t, chisq, iqr, and mad. The specified threshold is an
