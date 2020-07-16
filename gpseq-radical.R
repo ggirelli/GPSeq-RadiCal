@@ -6,7 +6,22 @@
 # License: MIT - Copyright (c) 2020 Gabriele Girelli
 # ------------------------------------------------------------------------------
 
+# UTILITIES ====================================================================
 
+version = "v0.0.5"
+if ("--version" %in% commandArgs(trailingOnly=TRUE)) {
+    cat(sprintf("GPSeq-RadiCal %s\n\n", version))
+    quit()
+}
+if ("--debug-info" %in% commandArgs(trailingOnly=TRUE)) {
+    pd = as.data.frame(installed.packages())[,
+        c("Package", "Version", "Priority")]
+    rownames(pd) = NULL
+    cat(sprintf("GPSeq-RadiCal %s\n", version))
+    print(R.version)
+    print(pd)
+    quit()
+}
 
 # DEPENDENCIES =================================================================
 
@@ -78,7 +93,7 @@ bstring2specs = function(bstring) {
     return(binspecs)
 }
 
-mkbins = function(brid, bspecs, cinfo, elongate_ter_bin=FALSE) {
+mk_genome_wide_bins = function(brid, bspecs, cinfo, elongate_ter_bin=FALSE) {
     bins = cinfo[, .(start=seq(start, end, by=bspecs[brid, step]),
         size=end), by=chrom]
     bins[, end := start + bspecs[brid, size] - 1]
@@ -94,6 +109,17 @@ mkbins = function(brid, bspecs, cinfo, elongate_ter_bin=FALSE) {
     bins[, chrom_id := NULL]
     bins = bins[order(chrom, start)]
     bins$tag = bspecs[brid, sprintf("%.0e:%.0e", size, step)]
+    return(bins)
+}
+
+mk_roi_centered_bins = function(brid, bspecs, rois) {
+    bins = data.table::copy(rois)
+    bins[, start := (start+end)/2]
+    bins[, end := start]
+    half_width = ceiling(bspecs[brid, size]/2)
+    bins[, start := start - half_width]
+    bins[, end := end + half_width]
+    bins$tag = bspecs[brid, sprintf("%.0e:rois", size)]
     return(bins)
 }
 
@@ -213,81 +239,62 @@ rm_bed_outliers = function(bd, args) {
     return(bd)
 }
 
-bin_bed_data = function(bbins, cond_cols, bd, args, site_universe=NULL) {
+bin_bed_data = function(bbins, bd, args, site_universe=NULL) {
     logging::loginfo(sprintf("Binning... [%s]", bbins[1, tag]))
     binned = data.table::rbindlist(pbapply::pblapply(split(bd, bd$chrom),
-        bin_chromosome, cond_cols, bbins, args, site_universe
+        bin_chromosome, bbins, args, site_universe
         ))[order(tag, chrom, start, cid)]
     return(binned)
 }
 
 bin_chromosome = function(
-    bbd, cond_cols, bins, args, site_universe=NULL) {
-    data.table::setkeyv(bins, bed3_colnames)
+    bbd, bbins, args, site_universe=NULL) {
+    data.table::setkeyv(bbins, bed3_colnames)
 
     selected_chromosome = bbd[1, chrom]
-    ovlps = data.table::foverlaps(bbd, bins)
+    ovlps = data.table::foverlaps(bbd, bbins)[!is.na(tag)]
 
     nreads = ovlps[, lapply(.SD, sum), by=c(bed3_colnames, "tag"),
-        .SDcols=cond_cols][order(tag, chrom, start)]
+        .SDcols=args$cond_cols][order(tag, chrom, start)]
     nreads = data.table::melt(nreads, id.vars=c(bed3_colnames, "tag"))
     data.table::setnames(nreads, c("variable", "value"), c("cid", "nreads"))
-    nreads[, cid := match(cid, cond_cols)]
+    nreads[, cid := match(cid, args$cond_cols)]
     data.table::setkeyv(nreads, c(bed3_colnames, "tag", "cid"))
 
     if ("universe" == args$site_domain) {
         assert(!is.null(site_universe),
             "Missing site universe data with site domain 'universe'.")
         nsites = data.table::foverlaps(
-            site_universe, bins[chrom==selected_chromosome]
+            site_universe, bbins[chrom==selected_chromosome]
             )[!is.na(start), .(
-                tag=bins[1, tag], cid=seq_len(cond_cols), nsites=.N
+                tag=bbins[1, tag], cid=seq_len(args$cond_cols), nsites=.N
             ), by=bed3_colnames]
     } else {
         if ("union" == args$site_domain) {
             nsites = ovlps[, lapply(.SD, function(x) length(x)),
-                by=c(bed3_colnames, "tag"), .SDcols=cond_cols
+                by=c(bed3_colnames, "tag"), .SDcols=args$cond_cols
                 ][order(tag, chrom, start)]
         } else {
             nsites = ovlps[, lapply(.SD, function(x) sum(0 != x)),
-                by=c(bed3_colnames, "tag"), .SDcols=cond_cols
+                by=c(bed3_colnames, "tag"), .SDcols=args$cond_cols
                 ][order(tag, chrom, start)]
         }
         nsites = data.table::melt(nsites, id.vars=c(bed3_colnames, "tag"))
         data.table::setnames(nsites, c("variable", "value"), c("cid", "nsites"))
-        nsites[, cid := match(cid, cond_cols)]
+        nsites[, cid := match(cid, args$cond_cols)]
     }
     data.table::setkeyv(nsites, c(bed3_colnames, "tag", "cid"))
 
     combined = nreads[nsites]
     combined[, lib_nreads := as.numeric(args$total_lib_nreads)[cid]]
     combined[, chr_nreads := as.numeric(args$total_chr_nreads[
-        selected_chromosome==chrom, .SD, .SDcols=cond_cols])[cid]]
+        selected_chromosome==chrom, .SD, .SDcols=args$cond_cols])[cid]]
 
     return(combined)
 }
 
 export_binned_bed_data = function(binned, odir, format="rds") {
     export_output(binned, odir, format, "binned")
-}
-
-mask_track = function(bbins, mask) {
-    if ("chrom:wide" == bbins[1, tag]) return(bbins)
-    data.table::setkeyv(bbins, bed3_colnames)
-
-    masked = unique(data.table::foverlaps(bbins, mask)[,
-        .(tag, nreads, nsites, lib_nreads, chr_nreads,
-            mask_overlaps=.N, mask_overlapped=!is.na(start)),
-        by=c(bed3_colnames[1], paste0("i.", bed3_colnames[2:3]),  "cid")])
-    data.table::setnames(masked,
-        paste0("i.", bed3_colnames[2:3]), bed3_colnames[2:3])
-
-    masked[!(mask_overlapped), mask_overlaps := 0]
-    masked[, mask_overlapped := NULL]
-    masked[0 < mask_overlaps, c("nreads", "nsites") := .(0, 0)]
-    masked[, mask_overlaps := NULL]
-
-    return(masked)
 }
 
 export_masked_data = function(masked, odir, format="rds") {
@@ -350,16 +357,61 @@ apply_intersection_site_domain = function(bd, args) {
     return(bd)
 }
 
+mask_dcasted_bed = function(bd, args) {
+    assert(file.exists(args$mask_bed),
+        sprintf("Cannot find mask bed file '%s'.", args$mask_bed))
+    mask = data.table::as.data.table(
+        rtracklayer::import.bed(args$mask_bed))[, .(chrom=seqnames, start, end)]
+    assert(all(mask[, start <= end]), sprintf(
+        "Mask not conforming to end >= start condition on row: %d",
+        which(mask[, start > end])))
+    data.table::setkeyv(mask, bed3_colnames)
+    data.table::setkeyv(bd, bed3_colnames)
+    masked = data.table::foverlaps(bd, mask)
+    masked[!is.na(start), c(args$cond_cols) := lapply(.SD, function(x) {
+            x = 0
+            return(x)
+        }), .SDcols=args$cond_cols]
+    masked = masked[, bed3_colnames[2:3] := .(NULL, NULL)]
+    data.table::setnames(masked,
+        paste0("i.", bed3_colnames[2:3]), bed3_colnames[2:3])
+    if (3 <= args$export_level) {
+        logging::loginfo("Exporting masked dcasted input bed...")
+        saveRDS(masked, file.path(args$exp_output_folder, "masked_bed.rds"))
+    }
+    return(masked)
+}
+
+mask_binned_track = function(bbins, mask) {
+    if ("chrom:wide" == bbins[1, tag]) {
+        logging::logwarn("Skipped masking for chromosome-wide bins.")
+        return(bbins)
+    }
+    data.table::setkeyv(bbins, bed3_colnames)
+    masked = unique(data.table::foverlaps(bbins, mask)[,
+        .(tag, nreads, nsites, lib_nreads, chr_nreads,
+            mask_overlaps=.N, mask_overlapped=!is.na(start)),
+        by=c(bed3_colnames[1], paste0("i.", bed3_colnames[2:3]),  "cid")])
+    data.table::setnames(masked,
+        paste0("i.", bed3_colnames[2:3]), bed3_colnames[2:3])
+    masked[!(mask_overlapped), mask_overlaps := 0]
+    masked[, mask_overlapped := NULL]
+    masked[0 < mask_overlaps, c("nreads", "nsites") := .(0, 0)]
+    masked[, mask_overlaps := NULL]
+
+    return(masked)
+}
+
 mask_binned = function(binned, args) {
     assert(file.exists(args$mask_bed),
         sprintf("Cannot find mask bed file '%s'.", args$mask_bed))
     mask = data.table::as.data.table(
         rtracklayer::import.bed(args$mask_bed))[, .(chrom=seqnames, start, end)]
+    assert(all(mask[, start <= end]), sprintf(
+        "Mask not conforming to end >= start condition on row: %d",
+        which(mask[, start > end])))
     data.table::setkeyv(mask, bed3_colnames)
-    if (args$chromosome_wide) {
-        logging::logwarn("Skipped masking for chromosome-wide bins.")
-    }
-    binned = pbapply::pblapply(binned, mask_track, mask, cl=args$threads)
+    binned = pbapply::pblapply(binned, mask_binned_track, mask, cl=args$threads)
     if (1 <= args$export_level) {
         logging::loginfo(sprintf("Exporting binned bed data..."))
         tmp = lapply(binned, export_masked_data, args$exp_output_folder)
@@ -434,19 +486,18 @@ process_experiment = function(bbmeta, bins, args) {
         args$total_chr_nreads = bd[, lapply(.SD, sum),
             by=chrom, .SDcols=args$cond_cols]
 
+    # Masking bed --------------------------------------------------------------
+
+        if (!is.na(args$mask_bed)) bd = mask_dcasted_bed(bd, args)
+
     # Assign to bins -----------------------------------------------------------
 
         bin_tags = bins[, unique(tag)]
-        binned = by(bins, bins$tag, bin_bed_data,
-            args$cond_cols, bd, args, site_universe)
+        binned = by(bins, bins$tag, bin_bed_data, bd, args, site_universe)
         if (1 <= args$export_level) {
             logging::loginfo(sprintf("Exporting binned bed data..."))
             tmp = lapply(binned, export_binned_bed_data, args$exp_output_folder)
         }
-
-    # Masking track ------------------------------------------------------------
-
-        if (!is.na(args$mask_bed)) binned = mask_binned(binned, args)
 
     # Calculate centrality -----------------------------------------------------
 
@@ -513,6 +564,9 @@ parser = argparser::add_argument(parser, arg="--ref-genome", help=paste0(
 parser = argparser::add_argument(parser, arg="--bin-tags",
     help="Comma-separated bin tags. Use --more-help for more details.",
     default="1e6:1e5,1e5:1e4")
+parser = argparser::add_argument(parser, arg="--bin-bed",
+    help="Path to bed with regions on which to build bins.")
+
 parser = argparser::add_argument(parser, arg="--bed-outlier-tag",
     help="Method:threshold for input bed outlier removal.",
     default="chisq:0.01")
@@ -550,8 +604,13 @@ parser = argparser::add_argument(parser, arg="--chromosome-wide", flag=TRUE,
 parser = argparser::add_argument(parser, arg="--elongate-ter-bin", flag=TRUE,
     help=paste0("Use this option to elongate chromosome-terminal bins ",
         "and have equally-sized bins."))
+
 parser = argparser::add_argument(parser, arg="--more-help", flag=TRUE,
     help="Show extended help page and exit")
+parser = argparser::add_argument(parser, arg="--version", flag=TRUE,
+    help="Show script version and exit")
+parser = argparser::add_argument(parser, arg="--debug-info", flag=TRUE,
+    help="Show debugging info and exit")
 
 if ("--more-help" %in% commandArgs(trailingOnly=TRUE)) {
     cat("
@@ -570,6 +629,14 @@ are generated in a non-overlapping manner. Use the '--chromosome-wide' option to
 estimated centrality also on chromosome-wide bins. Use the '--elongate-ter-bin'
 option to elongate chromosome terminal bins to the specified bin size, the
 default behaviour is for terminal bins' end to coincide with the chromosome end.
+
+Using the '--bin-bed' option. it is also possible to provide a bed file with
+regions of interest on which to build the bins. The bins are built with the bin
+sizes specified in '--bin-tag' and centered on the midpoint of the regions of
+interest. In other words, the bin step information is disregarded entirely. This
+can be used, for example, to estimate radiality of FISH probe regions. When
+using '--bin-bed', options '--cinfo-path', '--ref-genome', '--chromosome-wide',
+and '--elongate-ter-bin' are ignored.
 
 Outlier removal method can be specified with the 'method:threshold' format.
 Available methods: z, t, chisq, iqr, and mad. The specified threshold is an
@@ -641,12 +708,12 @@ if ("universal" == args$site_domain) {
     dir.create(args$output_folder)
 
     logging::basicConfig()
-    log_path = file.path(args$output_folder, "gpseq-radicalc.log")
+    log_path = file.path(args$output_folder, "gpseq-radical.log")
     logging::loginfo(sprintf("This log will be stored at '%s'.", log_path))
     logging::addHandler(logging::writeToFile, file=log_path)
 
     logging::loginfo(sprintf("Created output folder '%s'.", args$output_folder))
-    settings_path = file.path(args$output_folder, "gpseq-radicalc.opts.rds")
+    settings_path = file.path(args$output_folder, "gpseq-radical.opts.rds")
     saveRDS(args, settings_path)
     logging::loginfo(sprintf(
         "Exported input parameters to '%s'.", settings_path))
@@ -669,44 +736,62 @@ if ("universal" == args$site_domain) {
 
 # Read chromosome info bed -----------------------------------------------------
 
-    cinfo = NULL
-    if (is.na(args$cinfo_path)) {
-        logging::loginfo("Opening UCSC browser session...")
-        ucsc = rtracklayer::browserSession("UCSC")
-        rtracklayer::genome(ucsc) = args$ref_genome
-        logging::loginfo(sprintf("Querying UCSC for '%s' chromosome info...",
-            rtracklayer::genome(ucsc)))
-        cinfo = data.table::data.table(rtracklayer::getTable(
-            rtracklayer::ucscTableQuery(ucsc,
-                track="Chromosome Band", table="cytoBand")))
-        cinfo = cinfo[, .(start=1, end=max(chromEnd)), by=chrom]
-    } else {
-        assert(file.exists(args$cinfo_path),
-            sprintf("Cannot find chromosome info bed file '%s'.",
-                args$cinfo_path))
-        logging::loginfo(sprintf(
-            "Reading chromosome info from '%s'.", args$cinfo_path))
-        cinfo = data.table::as.data.table(
-            rtracklayer::import.bed(args$cinfo_path))
-        data.table::setnames(cinfo, "seqnames", "chrom")
-        cinfo[, c("width", "strand") := NULL]
+    if (is.na(args$bin_bed)) {
+        cinfo = NULL
+        if (is.na(args$cinfo_path)) {
+            logging::loginfo("Opening UCSC browser session...")
+            ucsc = rtracklayer::browserSession("UCSC")
+            rtracklayer::genome(ucsc) = args$ref_genome
+            logging::loginfo(sprintf(
+                "Querying UCSC for '%s' chromosome info...",
+                rtracklayer::genome(ucsc)))
+            cinfo = data.table::data.table(rtracklayer::getTable(
+                rtracklayer::ucscTableQuery(ucsc,
+                    track="Chromosome Band", table="cytoBand")))
+            cinfo = cinfo[, .(start=1, end=max(chromEnd)), by=chrom]
+        } else {
+            assert(file.exists(args$cinfo_path),
+                sprintf("Cannot find chromosome info bed file '%s'.",
+                    args$cinfo_path))
+            logging::loginfo(sprintf(
+                "Reading chromosome info from '%s'.", args$cinfo_path))
+            cinfo = data.table::as.data.table(
+                rtracklayer::import.bed(args$cinfo_path))
+            data.table::setnames(cinfo, "seqnames", "chrom")
+            cinfo[, c("width", "strand") := NULL]
+        }
+        assert(!is.null(cinfo), "Failed to build or retrieve chromosome info.")
     }
-    assert(!is.null(cinfo), "Failed to build or retrieve chromosome info.")
 
 # Build bins -------------------------------------------------------------------
 
     logging::loginfo(sprintf("Building bins."))
     bspecs = bstring2specs(args$bin_tags)
-    if (0 == nrow(bspecs)) {
-        bins = data.table()
+    if (0 == nrow(bspecs)) bins = data.table::data.table()
+    if (!is.na(args$bin_bed)) {
+        assert(file.exists(args$bin_bed), sprintf(
+            "Cannot find bin bed file '%s'.", args$bin_bed))
+        rois = data.table::as.data.table(rtracklayer::import.bed(args$bin_bed
+            ))[, .(chrom=seqnames, start, end)]
+        if (0 == nrow(rois)) {
+            bins = data.table::data.table()
+        } else if (0 < nrow(bspecs)) {
+            bins = data.table::rbindlist(pbapply::pblapply(
+                seq_len(nrow(bspecs)), mk_roi_centered_bins,
+                bspecs, rois, cl=args$threads))
+            bins = unique(bins)
+        }
     } else {
-        bins = data.table::rbindlist(pbapply::pblapply(seq_len(nrow(bspecs)),
-            mkbins, bspecs, cinfo, args$elongate_ter_bin, cl=args$threads))
-    }
-    if (args$chromosome_wide) {
-        args$chromosome_wide_bins = data.table::copy(cinfo)
-        args$chromosome_wide_bins[, tag := "chrom:wide"]
-        bins = data.table::rbindlist(list(args$chromosome_wide_bins, bins))
+        if (0 < nrow(bspecs)) {
+            bins = data.table::rbindlist(pbapply::pblapply(
+                seq_len(nrow(bspecs)), mk_genome_wide_bins,
+                bspecs, cinfo, args$elongate_ter_bin, cl=args$threads))
+        }
+        if (args$chromosome_wide) {
+            args$chromosome_wide_bins = data.table::copy(cinfo)
+            args$chromosome_wide_bins[, tag := "chrom:wide"]
+            bins = data.table::rbindlist(list(args$chromosome_wide_bins, bins))
+        }
     }
     data.table::setkeyv(bins, bed3_colnames)
     assert(0 < nrow(bins), "No bins built. Stopping.")

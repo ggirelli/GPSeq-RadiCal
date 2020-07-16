@@ -6,11 +6,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.5] - 2020-07-16
+### Added
+- `--bin-bed` option to focus calculation on regions of interest (e.g., FISH probes).
+- Now checking for mask bed consistency.
+- `--version` option for easier version tracking.
+- `--debug-info` option for easier debugging.
+
+### Changed
+- Now masking before binning (on dcasted input bed data), but after the normalization factors are calculated.
+
+### Fixed
+- Options and log filenames.
+
 ## [0.0.4] - 2020-07-15
-## Added
+### Added
 - Additional merged rds output.
 
-## Fixed
+### Fixed
 - Solved score masking crashes due to missing argument passing.
 
 ## [0.0.3] - 2020-07-15
@@ -38,6 +51,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.0.1] - 2020-07-15
 
 [Unreleased]: https://github.com/ggirelli/gpseq-img-py  
+[0.0.5]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.5
 [0.0.4]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.4
 [0.0.3]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.3
 [0.0.2]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.2

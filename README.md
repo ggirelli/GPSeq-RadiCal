@@ -41,6 +41,7 @@ To access the script help page, run the following:
 
 * Allows for normalization in a chromosome-wise fashion too, instead of only library-wise.
 * Normalization factors are calculated **after** outlier removal, not before.
+* Masking is performed **before** binning, but **after** the normalization factors are calculated. In this way, reads from masked regions still count for normalization purposes, while they are masked out from chromosome-wide analysis.
 
 ## Desired features
 
@@ -49,7 +50,7 @@ To access the script help page, run the following:
 
 ## Contributing
 
-We welcome any contributions to `GPSeq-RadiCal`. Please, refer to the [contribution guidelines](CONTRIBUTING.md) if this is your first time contributing! Also, check out our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+We welcome any contributions to `GPSeq-RadiCal`. Please, refer to the [contribution guidelines](CONTRIBUTING.md) if this is your first time contributing! Also, check out our [code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
