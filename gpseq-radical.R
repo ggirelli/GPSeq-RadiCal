@@ -373,14 +373,12 @@ mask_binned_track = function(bbins, mask) {
         return(bbins)
     }
     data.table::setkeyv(bbins, bed3_colnames)
-
     masked = unique(data.table::foverlaps(bbins, mask)[,
         .(tag, nreads, nsites, lib_nreads, chr_nreads,
             mask_overlaps=.N, mask_overlapped=!is.na(start)),
         by=c(bed3_colnames[1], paste0("i.", bed3_colnames[2:3]),  "cid")])
     data.table::setnames(masked,
         paste0("i.", bed3_colnames[2:3]), bed3_colnames[2:3])
-
     masked[!(mask_overlapped), mask_overlaps := 0]
     masked[, mask_overlapped := NULL]
     masked[0 < mask_overlaps, c("nreads", "nsites") := .(0, 0)]
