@@ -448,6 +448,10 @@ process_experiment = function(bbmeta, bins, args) {
         args$total_chr_nreads = bd[, lapply(.SD, sum),
             by=chrom, .SDcols=args$cond_cols]
 
+    # Masking bed --------------------------------------------------------------
+
+    
+
     # Assign to bins -----------------------------------------------------------
 
         bin_tags = bins[, unique(tag)]
@@ -665,12 +669,12 @@ if ("universal" == args$site_domain) {
     dir.create(args$output_folder)
 
     logging::basicConfig()
-    log_path = file.path(args$output_folder, "gpseq-radicalc.log")
+    log_path = file.path(args$output_folder, "gpseq-radical.log")
     logging::loginfo(sprintf("This log will be stored at '%s'.", log_path))
     logging::addHandler(logging::writeToFile, file=log_path)
 
     logging::loginfo(sprintf("Created output folder '%s'.", args$output_folder))
-    settings_path = file.path(args$output_folder, "gpseq-radicalc.opts.rds")
+    settings_path = file.path(args$output_folder, "gpseq-radical.opts.rds")
     saveRDS(args, settings_path)
     logging::loginfo(sprintf(
         "Exported input parameters to '%s'.", settings_path))
