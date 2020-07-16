@@ -369,6 +369,9 @@ mask_binned = function(binned, args) {
         sprintf("Cannot find mask bed file '%s'.", args$mask_bed))
     mask = data.table::as.data.table(
         rtracklayer::import.bed(args$mask_bed))[, .(chrom=seqnames, start, end)]
+    assert(all(mask[, start <= end]), sprintf(
+        "Mask not conforming to end >= start condition on row: %d",
+        which(mask[, start > end])))
     data.table::setkeyv(mask, bed3_colnames)
     binned = pbapply::pblapply(binned, mask_track, mask, cl=args$threads)
     if (1 <= args$export_level) {

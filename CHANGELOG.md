@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.0.5] - 2020-07-16
 ### Added
 - `--bin-bed` option to focus calculation on regions of interest (e.g., FISH probes).
+- Check for mask bed consistency.
 
 ## [0.0.4] - 2020-07-15
 ### Added
