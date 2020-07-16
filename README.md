@@ -49,7 +49,7 @@ To access the script help page, run the following:
 
 ## Contributing
 
-We welcome any contributions to `GPSeq-RadiCal`. Please, refer to the [contribution guidelines](CONTRIBUTING.md) if this is your first time contributing! Also, check out our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+We welcome any contributions to `GPSeq-RadiCal`. Please, refer to the [contribution guidelines](CONTRIBUTING.md) if this is your first time contributing! Also, check out our [code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
