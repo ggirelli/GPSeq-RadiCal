@@ -224,56 +224,56 @@ rm_bed_outliers = function(bd, args) {
     return(bd)
 }
 
-bin_bed_data = function(bbins, cond_cols, bd, args, site_universe=NULL) {
+bin_bed_data = function(bbins, bd, args, site_universe=NULL) {
     logging::loginfo(sprintf("Binning... [%s]", bbins[1, tag]))
     binned = data.table::rbindlist(pbapply::pblapply(split(bd, bd$chrom),
-        bin_chromosome, cond_cols, bbins, args, site_universe
+        bin_chromosome, bbins, args, site_universe
         ))[order(tag, chrom, start, cid)]
     return(binned)
 }
 
 bin_chromosome = function(
-    bbd, cond_cols, bins, args, site_universe=NULL) {
-    data.table::setkeyv(bins, bed3_colnames)
+    bbd, bbins, args, site_universe=NULL) {
+    data.table::setkeyv(bbins, bed3_colnames)
 
     selected_chromosome = bbd[1, chrom]
-    ovlps = data.table::foverlaps(bbd, bins)
+    ovlps = data.table::foverlaps(bbd, bbins)[!is.na(tag)]
 
     nreads = ovlps[, lapply(.SD, sum), by=c(bed3_colnames, "tag"),
-        .SDcols=cond_cols][order(tag, chrom, start)]
+        .SDcols=args$cond_cols][order(tag, chrom, start)]
     nreads = data.table::melt(nreads, id.vars=c(bed3_colnames, "tag"))
     data.table::setnames(nreads, c("variable", "value"), c("cid", "nreads"))
-    nreads[, cid := match(cid, cond_cols)]
+    nreads[, cid := match(cid, args$cond_cols)]
     data.table::setkeyv(nreads, c(bed3_colnames, "tag", "cid"))
 
     if ("universe" == args$site_domain) {
         assert(!is.null(site_universe),
             "Missing site universe data with site domain 'universe'.")
         nsites = data.table::foverlaps(
-            site_universe, bins[chrom==selected_chromosome]
+            site_universe, bbins[chrom==selected_chromosome]
             )[!is.na(start), .(
-                tag=bins[1, tag], cid=seq_len(cond_cols), nsites=.N
+                tag=bbins[1, tag], cid=seq_len(args$cond_cols), nsites=.N
             ), by=bed3_colnames]
     } else {
         if ("union" == args$site_domain) {
             nsites = ovlps[, lapply(.SD, function(x) length(x)),
-                by=c(bed3_colnames, "tag"), .SDcols=cond_cols
+                by=c(bed3_colnames, "tag"), .SDcols=args$cond_cols
                 ][order(tag, chrom, start)]
         } else {
             nsites = ovlps[, lapply(.SD, function(x) sum(0 != x)),
-                by=c(bed3_colnames, "tag"), .SDcols=cond_cols
+                by=c(bed3_colnames, "tag"), .SDcols=args$cond_cols
                 ][order(tag, chrom, start)]
         }
         nsites = data.table::melt(nsites, id.vars=c(bed3_colnames, "tag"))
         data.table::setnames(nsites, c("variable", "value"), c("cid", "nsites"))
-        nsites[, cid := match(cid, cond_cols)]
+        nsites[, cid := match(cid, args$cond_cols)]
     }
     data.table::setkeyv(nsites, c(bed3_colnames, "tag", "cid"))
 
     combined = nreads[nsites]
     combined[, lib_nreads := as.numeric(args$total_lib_nreads)[cid]]
     combined[, chr_nreads := as.numeric(args$total_chr_nreads[
-        selected_chromosome==chrom, .SD, .SDcols=cond_cols])[cid]]
+        selected_chromosome==chrom, .SD, .SDcols=args$cond_cols])[cid]]
 
     return(combined)
 }
@@ -448,8 +448,7 @@ process_experiment = function(bbmeta, bins, args) {
     # Assign to bins -----------------------------------------------------------
 
         bin_tags = bins[, unique(tag)]
-        binned = by(bins, bins$tag, bin_bed_data,
-            args$cond_cols, bd, args, site_universe)
+        binned = by(bins, bins$tag, bin_bed_data, bd, args, site_universe)
         if (1 <= args$export_level) {
             logging::loginfo(sprintf("Exporting binned bed data..."))
             tmp = lapply(binned, export_binned_bed_data, args$exp_output_folder)

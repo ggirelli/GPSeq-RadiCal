@@ -5,12 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `--bin-bed` option to focus calculation on regions of interest (e.g., FISH probes).
 
 ## [0.0.4] - 2020-07-15
-## Added
+### Added
 - Additional merged rds output.
 
-## Fixed
+### Fixed
 - Solved score masking crashes due to missing argument passing.
 
 ## [0.0.3] - 2020-07-15
