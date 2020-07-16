@@ -6,7 +6,22 @@
 # License: MIT - Copyright (c) 2020 Gabriele Girelli
 # ------------------------------------------------------------------------------
 
+# UTILITIES ====================================================================
 
+version = "v0.0.5"
+if ("--version" %in% commandArgs(trailingOnly=TRUE)) {
+    cat(sprintf("GPSeq-RadiCal %s\n\n", version))
+    quit()
+}
+if ("--debug-info" %in% commandArgs(trailingOnly=TRUE)) {
+    pd = as.data.frame(installed.packages())[,
+        c("Package", "Version", "Priority")]
+    rownames(pd) = NULL
+    cat(sprintf("GPSeq-RadiCal %s\n", version))
+    print(R.version)
+    print(pd)
+    quit()
+}
 
 # DEPENDENCIES =================================================================
 
@@ -589,8 +604,13 @@ parser = argparser::add_argument(parser, arg="--chromosome-wide", flag=TRUE,
 parser = argparser::add_argument(parser, arg="--elongate-ter-bin", flag=TRUE,
     help=paste0("Use this option to elongate chromosome-terminal bins ",
         "and have equally-sized bins."))
+
 parser = argparser::add_argument(parser, arg="--more-help", flag=TRUE,
     help="Show extended help page and exit")
+parser = argparser::add_argument(parser, arg="--version", flag=TRUE,
+    help="Show script version and exit")
+parser = argparser::add_argument(parser, arg="--debug-info", flag=TRUE,
+    help="Show debugging info and exit")
 
 if ("--more-help" %in% commandArgs(trailingOnly=TRUE)) {
     cat("

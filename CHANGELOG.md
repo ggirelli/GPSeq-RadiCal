@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - `--bin-bed` option to focus calculation on regions of interest (e.g., FISH probes).
 - Now checking for mask bed consistency.
+- `--version` option for easier version tracking.
+- `--debug-info` option for easier debugging.
 
 ### Changed
 - Now masking before binning (on dcasted input bed data), but after the normalization factors are calculated.
