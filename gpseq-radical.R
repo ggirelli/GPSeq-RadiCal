@@ -78,7 +78,7 @@ bstring2specs = function(bstring) {
     return(binspecs)
 }
 
-mkbins = function(brid, bspecs, cinfo, elongate_ter_bin=FALSE) {
+mk_genome_wide_bins = function(brid, bspecs, cinfo, elongate_ter_bin=FALSE) {
     bins = cinfo[, .(start=seq(start, end, by=bspecs[brid, step]),
         size=end), by=chrom]
     bins[, end := start + bspecs[brid, size] - 1]
@@ -94,6 +94,17 @@ mkbins = function(brid, bspecs, cinfo, elongate_ter_bin=FALSE) {
     bins[, chrom_id := NULL]
     bins = bins[order(chrom, start)]
     bins$tag = bspecs[brid, sprintf("%.0e:%.0e", size, step)]
+    return(bins)
+}
+
+mk_roi_centered_bins = function(brid, bspecs, rois) {
+    bins = data.table::copy(rois)
+    bins[, start := (start+end)/2]
+    bins[, end := start]
+    half_width = ceiling(bspecs[brid, size]/2)
+    bins[, start := start - half_width]
+    bins[, end := end + half_width]
+    bins$tag = bspecs[brid, sprintf("%.0e:rois", size)]
     return(bins)
 }
 
@@ -680,44 +691,62 @@ if ("universal" == args$site_domain) {
 
 # Read chromosome info bed -----------------------------------------------------
 
-    cinfo = NULL
-    if (is.na(args$cinfo_path)) {
-        logging::loginfo("Opening UCSC browser session...")
-        ucsc = rtracklayer::browserSession("UCSC")
-        rtracklayer::genome(ucsc) = args$ref_genome
-        logging::loginfo(sprintf("Querying UCSC for '%s' chromosome info...",
-            rtracklayer::genome(ucsc)))
-        cinfo = data.table::data.table(rtracklayer::getTable(
-            rtracklayer::ucscTableQuery(ucsc,
-                track="Chromosome Band", table="cytoBand")))
-        cinfo = cinfo[, .(start=1, end=max(chromEnd)), by=chrom]
-    } else {
-        assert(file.exists(args$cinfo_path),
-            sprintf("Cannot find chromosome info bed file '%s'.",
-                args$cinfo_path))
-        logging::loginfo(sprintf(
-            "Reading chromosome info from '%s'.", args$cinfo_path))
-        cinfo = data.table::as.data.table(
-            rtracklayer::import.bed(args$cinfo_path))
-        data.table::setnames(cinfo, "seqnames", "chrom")
-        cinfo[, c("width", "strand") := NULL]
+    if (is.na(args$bin_bed)) {
+        cinfo = NULL
+        if (is.na(args$cinfo_path)) {
+            logging::loginfo("Opening UCSC browser session...")
+            ucsc = rtracklayer::browserSession("UCSC")
+            rtracklayer::genome(ucsc) = args$ref_genome
+            logging::loginfo(sprintf(
+                "Querying UCSC for '%s' chromosome info...",
+                rtracklayer::genome(ucsc)))
+            cinfo = data.table::data.table(rtracklayer::getTable(
+                rtracklayer::ucscTableQuery(ucsc,
+                    track="Chromosome Band", table="cytoBand")))
+            cinfo = cinfo[, .(start=1, end=max(chromEnd)), by=chrom]
+        } else {
+            assert(file.exists(args$cinfo_path),
+                sprintf("Cannot find chromosome info bed file '%s'.",
+                    args$cinfo_path))
+            logging::loginfo(sprintf(
+                "Reading chromosome info from '%s'.", args$cinfo_path))
+            cinfo = data.table::as.data.table(
+                rtracklayer::import.bed(args$cinfo_path))
+            data.table::setnames(cinfo, "seqnames", "chrom")
+            cinfo[, c("width", "strand") := NULL]
+        }
+        assert(!is.null(cinfo), "Failed to build or retrieve chromosome info.")
     }
-    assert(!is.null(cinfo), "Failed to build or retrieve chromosome info.")
 
 # Build bins -------------------------------------------------------------------
 
     logging::loginfo(sprintf("Building bins."))
     bspecs = bstring2specs(args$bin_tags)
-    if (0 == nrow(bspecs)) {
-        bins = data.table()
+    if (0 == nrow(bspecs)) bins = data.table::data.table()
+    if (!is.na(args$bin_bed)) {
+        assert(file.exists(args$bin_bed), sprintf(
+            "Cannot find bin bed file '%s'.", args$bin_bed))
+        rois = data.table::as.data.table(rtracklayer::import.bed(args$bin_bed
+            ))[, .(chrom=seqnames, start, end)]
+        if (0 == nrow(rois)) {
+            bins = data.table::data.table()
+        } else if (0 < nrow(bspecs)) {
+            bins = data.table::rbindlist(pbapply::pblapply(
+                seq_len(nrow(bspecs)), mk_roi_centered_bins,
+                bspecs, rois, cl=args$threads))
+            bins = unique(bins)
+        }
     } else {
-        bins = data.table::rbindlist(pbapply::pblapply(seq_len(nrow(bspecs)),
-            mkbins, bspecs, cinfo, args$elongate_ter_bin, cl=args$threads))
-    }
-    if (args$chromosome_wide) {
-        args$chromosome_wide_bins = data.table::copy(cinfo)
-        args$chromosome_wide_bins[, tag := "chrom:wide"]
-        bins = data.table::rbindlist(list(args$chromosome_wide_bins, bins))
+        if (0 < nrow(bspecs)) {
+            bins = data.table::rbindlist(pbapply::pblapply(
+                seq_len(nrow(bspecs)), mk_genome_wide_bins,
+                bspecs, cinfo, args$elongate_ter_bin, cl=args$threads))
+        }
+        if (args$chromosome_wide) {
+            args$chromosome_wide_bins = data.table::copy(cinfo)
+            args$chromosome_wide_bins[, tag := "chrom:wide"]
+            bins = data.table::rbindlist(list(args$chromosome_wide_bins, bins))
+        }
     }
     data.table::setkeyv(bins, bed3_colnames)
     assert(0 < nrow(bins), "No bins built. Stopping.")
