@@ -747,7 +747,7 @@ if ("universal" == args$site_domain) {
                 rtracklayer::genome(ucsc)))
             cinfo = data.table::data.table(rtracklayer::getTable(
                 rtracklayer::ucscTableQuery(ucsc,
-                    track="Chromosome Band", table="cytoBand")))
+                    track="Chromosome Band (Ideogram)", table="cytoBandIdeo")))
             cinfo = cinfo[, .(start=1, end=max(chromEnd)), by=chrom]
         } else {
             assert(file.exists(args$cinfo_path),
