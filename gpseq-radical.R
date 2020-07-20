@@ -39,7 +39,7 @@ pbapply::pboptions(type="timer")
 
 # FUNCTIONS ====================================================================
 
-chrom_to_chrom_id = function(chrom, nchrom = 24, hetero = c("X", "Y")) {
+chrom_to_chrom_id = function(chrom, nchrom=24, hetero=c("X", "Y")) {
     # Convert a chromosome name (e.g., "chr1", "chrX") to a numerical ID.
     if (grepl(":", chrom)) {
         return(floor(as.numeric(gsub(":", ".",
@@ -54,7 +54,7 @@ chrom_to_chrom_id = function(chrom, nchrom = 24, hetero = c("X", "Y")) {
     }
 }
 
-add_chrom_id = function(data, key = "chrom") {
+add_chrom_id = function(data, key = "chrom", nchrom=24, hetero=c("X", "Y")) {
     # Add chromosome ID to a data.table.
     # key should be the name of the column with chromosome names.
     stopifnot(data.table::is.data.table(data))
@@ -63,7 +63,7 @@ add_chrom_id = function(data, key = "chrom") {
     cid_table = data.table::data.table(
         chrom = as.character(unique(data$chrom)))
     cid_table$chrom_id = unlist(lapply(
-        cid_table$chrom, FUN = chrom_to_chrom_id))
+        cid_table$chrom, FUN=chrom_to_chrom_id, nchrom, hetero))
     data.table::setkeyv(cid_table, "chrom")
     data.table::setkeyv(data, key)
 
@@ -93,11 +93,11 @@ bstring2specs = function(bstring) {
     return(binspecs)
 }
 
-mk_genome_wide_bins = function(brid, bspecs, cinfo, elongate_ter_bin=FALSE) {
+mk_genome_wide_bins = function(brid, bspecs, cinfo, args) {
     bins = cinfo[, .(start=seq(start, end, by=bspecs[brid, step]),
         size=end), by=chrom]
     bins[, end := start + bspecs[brid, size] - 1]
-    if (elongate_ter_bin) {
+    if (args$elongate_ter_bin) {
         bins = data.table::rbindlist(list(bins[end<=size, .(chrom, start, end)],
             bins[end > size, .(start=min(start), end=min(end)), by=chrom]))
     } else {
@@ -591,6 +591,11 @@ parser = argparser::add_argument(parser, arg="--mask-bed",
     help="Path to bed file with regions to be masked.",
     default=NULL)
 
+parser = argparser::add_argument(parser, arg="--chrom-tag",
+    help="Two values, column (:) separated: the number of chromosomes, and a
+    string with comma-separated heterosome names.",
+    default="24:X,Y")
+
 parser = argparser::add_argument(parser, arg="--threads", help=paste0(
         "Number of threads for parallelization. ",
         "Optimal when using at least one core per bed file."),
@@ -763,6 +768,13 @@ if ("universal" == args$site_domain) {
         assert(!is.null(cinfo), "Failed to build or retrieve chromosome info.")
     }
 
+# Retain chromosomes according to chromosome tag -------------------------------
+
+    chrom_tag = strsplit(":", args$chrom_tag)
+    chromosomes = paste0("chr", c(1:as.numeric(chrom__tag[1]),
+        unlist(strsplit(",", chrom_tag[2]))))
+    cinfo = cinfo[chrom %in% chromosome]
+
 # Build bins -------------------------------------------------------------------
 
     logging::loginfo(sprintf("Building bins."))
@@ -785,7 +797,7 @@ if ("universal" == args$site_domain) {
         if (0 < nrow(bspecs)) {
             bins = data.table::rbindlist(pbapply::pblapply(
                 seq_len(nrow(bspecs)), mk_genome_wide_bins,
-                bspecs, cinfo, args$elongate_ter_bin, cl=args$threads))
+                bspecs, cinfo, args, cl=args$threads))
         }
         if (args$chromosome_wide) {
             args$chromosome_wide_bins = data.table::copy(cinfo)
