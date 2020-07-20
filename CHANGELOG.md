@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.0.6] - 2020-07-20
 ### Added
 - `--chrom-tag` option, to define the number of chromosomes and heterosome names.
 
@@ -60,6 +62,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.0.1] - 2020-07-15
 
 [Unreleased]: https://github.com/ggirelli/gpseq-img-py  
+[0.0.6]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.6
 [0.0.5]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.5
 [0.0.4]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.4
 [0.0.3]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.3
