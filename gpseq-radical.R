@@ -770,10 +770,10 @@ if ("universal" == args$site_domain) {
 
 # Retain chromosomes according to chromosome tag -------------------------------
 
-    chrom_tag = strsplit(":", args$chrom_tag)
-    chromosomes = paste0("chr", c(1:as.numeric(chrom__tag[1]),
-        unlist(strsplit(",", chrom_tag[2]))))
-    cinfo = cinfo[chrom %in% chromosome]
+    chrom_tag = unlist(strsplit(args$chrom_tag, ":"))
+    chromosomes = paste0("chr", c(1:as.numeric(chrom_tag[1]),
+        unlist(strsplit(chrom_tag[2], ","))))
+    cinfo = cinfo[chrom %in% chromosomes]
 
 # Build bins -------------------------------------------------------------------
 
