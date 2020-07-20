@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Now retrieving correct chromosome size information from UCSC, if not provided.
+- All bins are now retained in the output, even if no sites/reads are present or the estimated centrality is NaN.
 
 ## [0.0.5] - 2020-07-16
 ### Added

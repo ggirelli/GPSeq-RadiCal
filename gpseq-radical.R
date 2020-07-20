@@ -249,12 +249,16 @@ bin_bed_data = function(bbins, bd, args, site_universe=NULL) {
 
 bin_chromosome = function(
     bbd, bbins, args, site_universe=NULL) {
-    data.table::setkeyv(bbins, bed3_colnames)
-
     selected_chromosome = bbd[1, chrom]
-    ovlps = data.table::foverlaps(bbd, bbins)[!is.na(tag)]
+    bbins2 = data.table::copy(bbins)[selected_chromosome==chrom]
+    data.table::setkeyv(bbins2, bed3_colnames)
 
-    nreads = ovlps[, lapply(.SD, sum), by=c(bed3_colnames, "tag"),
+    ovlps = data.table::foverlaps(bbins2, bbd)[!is.na(tag)]
+    ovlps[, c(bed3_colnames[2:3]) := .(NULL, NULL)]
+    data.table::setnames(ovlps,
+        paste0("i.", bed3_colnames[2:3]), bed3_colnames[2:3])
+
+    nreads = ovlps[, lapply(.SD, sum, na.rm=T), by=c(bed3_colnames, "tag"),
         .SDcols=args$cond_cols][order(tag, chrom, start)]
     nreads = data.table::melt(nreads, id.vars=c(bed3_colnames, "tag"))
     data.table::setnames(nreads, c("variable", "value"), c("cid", "nreads"))
@@ -265,9 +269,9 @@ bin_chromosome = function(
         assert(!is.null(site_universe),
             "Missing site universe data with site domain 'universe'.")
         nsites = data.table::foverlaps(
-            site_universe, bbins[chrom==selected_chromosome]
+            site_universe, bbins2[chrom==selected_chromosome]
             )[!is.na(start), .(
-                tag=bbins[1, tag], cid=seq_len(args$cond_cols), nsites=.N
+                tag=bbins2[1, tag], cid=seq_len(args$cond_cols), nsites=.N
             ), by=bed3_colnames]
     } else {
         if ("union" == args$site_domain) {
@@ -283,6 +287,7 @@ bin_chromosome = function(
         data.table::setnames(nsites, c("variable", "value"), c("cid", "nsites"))
         nsites[, cid := match(cid, args$cond_cols)]
     }
+    nsites[is.na(nsites), nsites := 0]
     data.table::setkeyv(nsites, c(bed3_colnames, "tag", "cid"))
 
     combined = nreads[nsites]
