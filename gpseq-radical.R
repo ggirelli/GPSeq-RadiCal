@@ -445,6 +445,9 @@ process_experiment = function(bbmeta, bins, args) {
     args$exp_output_folder = file.path(args$output_folder, exid)
     dir.create(args$exp_output_folder)
 
+    assert(2 <= nrow(bbmeta),
+        sprintf("Provide at least two bed files. [%s]", exid))
+
     logging::loginfo("Storing metadata.")
     data.table::fwrite(bbmeta,
         file.path(args$exp_output_folder, "bed.metadata.tsv"), sep="\t")
@@ -734,7 +737,7 @@ if ("universal" == args$site_domain) {
 
     logging::loginfo(sprintf("Parsing metadata from '%s'.", args$bmeta_path))
     bmeta = data.table::fread(args$bmeta_path)
-    assert(2 < nrow(bmeta), "Provide at least two bed files.")
+    assert(2 <= nrow(bmeta), "Provide at least two bed files.")
     logging::loginfo("Storing metadata.")
     data.table::fwrite(bmeta,
         file.path(args$output_folder, "bed.metadata.tsv"), sep="\t")
