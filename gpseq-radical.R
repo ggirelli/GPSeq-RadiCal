@@ -752,9 +752,12 @@ if ("universal" == args$site_domain) {
             logging::loginfo(sprintf(
                 "Querying UCSC for '%s' chromosome info...",
                 rtracklayer::genome(ucsc)))
+            chrom_list = data.table::data.table(rtracklayer::getTable(
+                rtracklayer::ucscTableQuery(ucsc,
+                    track="Chromosome Band", table="cytoBand")))[, unique(chrom)]
             cinfo = data.table::data.table(rtracklayer::getTable(
                 rtracklayer::ucscTableQuery(ucsc,
-                    table="chromInfo")))
+                    table="chromInfo")))[chrom %in% chrom_list]
             cinfo = cinfo[, .(start=1, end=size), by=chrom]
         } else {
             assert(file.exists(args$cinfo_path),
