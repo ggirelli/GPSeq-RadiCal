@@ -8,7 +8,7 @@
 
 # UTILITIES ====================================================================
 
-version = "v0.0.5"
+version = "v0.0.6"
 if ("--version" %in% commandArgs(trailingOnly=TRUE)) {
     cat(sprintf("GPSeq-RadiCal %s\n\n", version))
     quit()
@@ -256,12 +256,16 @@ bin_bed_data = function(bbins, bd, args, site_universe=NULL) {
 
 bin_chromosome = function(
     bbd, bbins, args, site_universe=NULL) {
-    data.table::setkeyv(bbins, bed3_colnames)
-
     selected_chromosome = bbd[1, chrom]
-    ovlps = data.table::foverlaps(bbd, bbins)[!is.na(tag)]
+    bbins2 = data.table::copy(bbins)[selected_chromosome==chrom]
+    data.table::setkeyv(bbins2, bed3_colnames)
 
-    nreads = ovlps[, lapply(.SD, sum), by=c(bed3_colnames, "tag"),
+    ovlps = data.table::foverlaps(bbins2, bbd)[!is.na(tag)]
+    ovlps[, c(bed3_colnames[2:3]) := .(NULL, NULL)]
+    data.table::setnames(ovlps,
+        paste0("i.", bed3_colnames[2:3]), bed3_colnames[2:3])
+
+    nreads = ovlps[, lapply(.SD, sum, na.rm=T), by=c(bed3_colnames, "tag"),
         .SDcols=args$cond_cols][order(tag, chrom, start)]
     nreads = data.table::melt(nreads, id.vars=c(bed3_colnames, "tag"))
     data.table::setnames(nreads, c("variable", "value"), c("cid", "nreads"))
@@ -272,9 +276,9 @@ bin_chromosome = function(
         assert(!is.null(site_universe),
             "Missing site universe data with site domain 'universe'.")
         nsites = data.table::foverlaps(
-            site_universe, bbins[chrom==selected_chromosome]
+            site_universe, bbins2[chrom==selected_chromosome]
             )[!is.na(start), .(
-                tag=bbins[1, tag], cid=seq_len(args$cond_cols), nsites=.N
+                tag=bbins2[1, tag], cid=seq_len(args$cond_cols), nsites=.N
             ), by=bed3_colnames]
     } else {
         if ("union" == args$site_domain) {
@@ -290,6 +294,7 @@ bin_chromosome = function(
         data.table::setnames(nsites, c("variable", "value"), c("cid", "nsites"))
         nsites[, cid := match(cid, args$cond_cols)]
     }
+    nsites[is.na(nsites), nsites := 0]
     data.table::setkeyv(nsites, c(bed3_colnames, "tag", "cid"))
 
     combined = nreads[nsites]
@@ -451,6 +456,9 @@ process_experiment = function(bbmeta, bins, args) {
     logging::loginfo(sprintf("Processing experiment '%s'.", exid))
     args$exp_output_folder = file.path(args$output_folder, exid)
     dir.create(args$exp_output_folder)
+
+    assert(2 <= nrow(bbmeta),
+        sprintf("Provide at least two bed files. [%s]", exid))
 
     logging::loginfo("Storing metadata.")
     data.table::fwrite(bbmeta,
@@ -741,7 +749,7 @@ if ("universal" == args$site_domain) {
 
     logging::loginfo(sprintf("Parsing metadata from '%s'.", args$bmeta_path))
     bmeta = data.table::fread(args$bmeta_path)
-    assert(2 < nrow(bmeta), "Provide at least two bed files.")
+    assert(2 <= nrow(bmeta), "Provide at least two bed files.")
     logging::loginfo("Storing metadata.")
     data.table::fwrite(bmeta,
         file.path(args$output_folder, "bed.metadata.tsv"), sep="\t")
@@ -780,10 +788,10 @@ if ("universal" == args$site_domain) {
 
 # Retain chromosomes according to chromosome tag -------------------------------
 
-    chrom_tag = strsplit(":", args$chrom_tag)
-    chromosomes = paste0("chr", c(1:as.numeric(chrom__tag[1]),
-        unlist(strsplit(",", chrom_tag[2]))))
-    cinfo = cinfo[chrom %in% chromosome]
+    chrom_tag = unlist(strsplit(args$chrom_tag, ":"))
+    chromosomes = paste0("chr", c(1:as.numeric(chrom_tag[1]),
+        unlist(strsplit(chrom_tag[2], ","))))
+    cinfo = cinfo[chrom %in% chromosomes]
 
 # Build bins -------------------------------------------------------------------
 

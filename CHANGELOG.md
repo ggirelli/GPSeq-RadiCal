@@ -14,6 +14,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Now retrieving correct chromosome size information from UCSC, if not provided.
 
+## [0.0.6] - 2020-07-20
+### Added
+- `--chrom-tag` option, to define the number of chromosomes and heterosome names.
+
+### Changed
+- Using `--chrom-tag` to select chromosomes from retrieved/read chromosome information.
+
+### Fixed
+- Now retrieving correct chromosome size information from UCSC, if not provided.
+- All bins are now retained in the output, even if no sites/reads are present or the estimated centrality is NaN.
+
 ## [0.0.5] - 2020-07-16
 ### Added
 - `--bin-bed` option to focus calculation on regions of interest (e.g., FISH probes).
@@ -59,6 +70,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.0.1] - 2020-07-15
 
 [Unreleased]: https://github.com/ggirelli/gpseq-img-py  
+[0.0.6]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.6
 [0.0.5]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.5
 [0.0.4]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.4
 [0.0.3]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.3
