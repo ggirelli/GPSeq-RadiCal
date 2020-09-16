@@ -130,8 +130,9 @@ import_gpseq_bed = function(brid, bmeta) {
     o = data.table::as.data.table(rtracklayer::import.bed(brmeta$fpath))
     data.table::setnames(o, "seqnames", "chrom")
     o[, c("width", "strand", "name") := NULL]
-    brmeta[, fname := NULL]
+    brmeta[, fpath := NULL]
     o[, condition := sprintf("cid_%d", brid)]
+    return(o)
 }
 
 parse_bed_meta = function(bbmeta, args) {
@@ -140,8 +141,14 @@ parse_bed_meta = function(bbmeta, args) {
         import_gpseq_bed, bbmeta, cl=args$threads))
     bd[, end := start]
     logging::loginfo(sprintf("Dcasting bed data."))
+    dups = bd[, .N, by=c("chrom", "start", "end", "condition")][N != 1]
+    if ( 0 != nrow(dups) ) {
+        logging::logwarn(sprintf(
+            "Found %d duplicated regions, using minimum signal.", nrow(dups)))
+        print(dups)
+    }
     bd = data.table::dcast(bd, chrom+start+end~condition,
-        value.var="score", fill=0)
+        value.var="score", fill=0, fun.aggreg=min)
     if (3 <= args$export_level) {
         logging::loginfo("Exporting dcasted input bed...")
         saveRDS(bd, file.path(args$exp_output_folder, "input_bed.rds"))
