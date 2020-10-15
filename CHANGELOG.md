@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - If duplicated regions are found in input bed file, a warning is triggered and the minimum score is used.
 
+### Fixed
+- Bug in binning when `--site-domain universe` option is used.
+
 ## [0.0.6] - 2020-07-20
 ### Added
 - `--chrom-tag` option, to define the number of chromosomes and heterosome names.

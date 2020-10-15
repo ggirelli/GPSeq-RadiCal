@@ -278,7 +278,7 @@ bin_chromosome = function(
         nsites = data.table::foverlaps(
             site_universe, bbins2[chrom==selected_chromosome]
             )[!is.na(start), .(
-                tag=bbins2[1, tag], cid=seq_len(args$cond_cols), nsites=.N
+                tag=bbins2[1, tag], cid=seq_along(args$cond_cols), nsites=.N
             ), by=bed3_colnames]
     } else {
         if ("union" == args$site_domain) {
