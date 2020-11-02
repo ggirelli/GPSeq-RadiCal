@@ -789,7 +789,7 @@ if ("universal" == args$site_domain) {
     chrom_tag = unlist(strsplit(args$chrom_tag, ":"))
     chromosomes = paste0("chr", c(1:as.numeric(chrom_tag[1]),
         unlist(strsplit(chrom_tag[2], ","))))
-    cinfo$chrom_base = unlist(lapply(cinfo$chrom,
+    cinfo$chrom_base = unlist(lapply(as.character(cinfo$chrom),
         function(x) unlist(strsplit(x, "_", fixed=T))[1]))
     cinfo = cinfo[chrom_base %in% chromosomes]
     cinfo[, chrom_base := NULL]
