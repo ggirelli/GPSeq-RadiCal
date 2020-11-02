@@ -45,6 +45,7 @@ chrom_to_chrom_id = function(chrom, nchrom=24, hetero=c("X", "Y")) {
         return(floor(as.numeric(gsub(":", ".",
             substr(chrom, 4, nchar(chrom))))))
     } else {
+        chrom = unlist(strsplit(chrom, "_", fixed=T))[1]
         chrom_id = substr(chrom, 4, nchar(chrom))
         if (chrom_id %in% hetero)
             chrom_id = nchrom - which(rev(hetero) == chrom_id) + 1
