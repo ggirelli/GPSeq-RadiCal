@@ -8,7 +8,7 @@
 
 # UTILITIES ====================================================================
 
-version = "v0.0.6"
+version = "v0.0.7"
 if ("--version" %in% commandArgs(trailingOnly=TRUE)) {
     cat(sprintf("GPSeq-RadiCal %s\n\n", version))
     quit()
@@ -94,6 +94,20 @@ bstring2specs = function(bstring) {
     return(binspecs)
 }
 
+scientific_with_signif_digits = function(x) {
+    x_string = sprintf("%d", x)
+    integer_part = ifelse("."  %in% x_string,
+        strsplit(x_string, ".", fixed=T)[[1]], x_string)
+    for (i in seq(nchar(integer_part))) {
+        base = as.numeric(substr(integer_part, 1, i))
+        exponent = nchar(integer_part) - i
+        if (base * (10**exponent) == x) {
+            return(sprintf(paste0("%.", i-1, "e"), x))
+        }
+    }
+    return(as.character(x))
+}
+
 mk_genome_wide_bins = function(brid, bspecs, cinfo, args) {
     bins = cinfo[, .(start=seq(start, end, by=bspecs[brid, step]),
         size=end), by=chrom]
@@ -109,7 +123,9 @@ mk_genome_wide_bins = function(brid, bspecs, cinfo, args) {
     bins[, chrom := reorder(chrom, chrom_id)]
     bins[, chrom_id := NULL]
     bins = bins[order(chrom, start)]
-    bins$tag = bspecs[brid, sprintf("%.0e:%.0e", size, step)]
+    bins$tag = bspecs[brid, paste0(
+        scientific_with_signif_digits(size), ":",
+        scientific_with_signif_digits(step))]
     return(bins)
 }
 
@@ -120,7 +136,8 @@ mk_roi_centered_bins = function(brid, bspecs, rois) {
     half_width = ceiling(bspecs[brid, size]/2)
     bins[, start := start - half_width]
     bins[, end := end + half_width]
-    bins$tag = bspecs[brid, sprintf("%.0e:rois", size)]
+    bins$tag = bspecs[brid,
+        paste0(scientific_with_signif_digits(size), ":rois")]
     return(bins)
 }
 
@@ -143,7 +160,7 @@ parse_bed_meta = function(bbmeta, args) {
     bd[, end := start]
     logging::loginfo(sprintf("Dcasting bed data."))
     dups = bd[, .N, by=c("chrom", "start", "end", "condition")][N != 1]
-    if ( 0 != nrow(dups) ) {
+    if (0 != nrow(dups)) {
         logging::logwarn(sprintf(
             "Found %d duplicated regions, using minimum signal.", nrow(dups)))
         print(dups)

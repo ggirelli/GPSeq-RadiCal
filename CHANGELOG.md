@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.0.7] - 2021-10-12
+### Fixed
+- Now supporting correct naming of bins where size is not a multiple of 10.
+
 ### Changed
 - If duplicated regions are found in input bed file, a warning is triggered and the minimum score is used.
 
@@ -67,9 +72,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.0.1] - 2020-07-15
 
 [Unreleased]: https://github.com/ggirelli/gpseq-img-py  
-[0.0.6]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.6
-[0.0.5]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.5
-[0.0.4]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.4
-[0.0.3]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.3
-[0.0.2]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.2
-[0.0.1]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.1
+[0.0.6]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.7  
+[0.0.6]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.6  
+[0.0.5]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.5  
+[0.0.4]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.4  
+[0.0.3]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.3  
+[0.0.2]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.2  
+[0.0.1]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.1  
