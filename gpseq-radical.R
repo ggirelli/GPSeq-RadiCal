@@ -799,7 +799,8 @@ if ("universal" == args$site_domain) {
             cinfo[, c("width", "strand") := NULL]
         }
         assert(!is.null(cinfo), "Failed to build or retrieve chromosome info.")
-        assert(nrow(cinfo[start == 1]) == nrow(cinfo), "Chromosome start should be 1.")
+        assert(nrow(cinfo[start == 1]) == nrow(cinfo),
+            "Chromosome start should be 1.")
     }
 
 # Retain chromosomes according to chromosome tag -------------------------------
