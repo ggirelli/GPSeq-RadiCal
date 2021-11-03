@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased] 
 ### Fixed
 - Added assertion for correct chromosome start position when using --cinfo-path.
+- Enforced integer bed coordinates when using --bin-bed.
 
 ## [0.0.7] - 2021-10-12
 ### Changed

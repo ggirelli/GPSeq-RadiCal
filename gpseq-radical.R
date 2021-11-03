@@ -126,6 +126,8 @@ mk_genome_wide_bins = function(brid, bspecs, cinfo, args) {
     bins$tag = bspecs[brid, paste0(
         scientific_with_signif_digits(size), ":",
         scientific_with_signif_digits(step))]
+    bins[, start := floor(start)]
+    bins[, end := ceiling(end)]
     return(bins)
 }
 
@@ -269,6 +271,8 @@ bin_bed_data = function(bbins, bd, args, site_universe=NULL) {
     binned = data.table::rbindlist(pbapply::pblapply(split(bd, bd$chrom),
         bin_chromosome, bbins, args, site_universe
         ))[order(tag, chrom, start, cid)]
+    binned[, start := floor(start)]
+    binned[, end := ceiling(end)]
     return(binned)
 }
 
@@ -805,13 +809,15 @@ if ("universal" == args$site_domain) {
 
 # Retain chromosomes according to chromosome tag -------------------------------
 
-    chrom_tag = unlist(strsplit(args$chrom_tag, ":"))
-    chromosomes = paste0("chr", c(1:as.numeric(chrom_tag[1]),
-        unlist(strsplit(chrom_tag[2], ","))))
-    cinfo$chrom_base = unlist(lapply(as.character(cinfo$chrom),
-        function(x) unlist(strsplit(x, "_", fixed=T))[1]))
-    cinfo = cinfo[chrom_base %in% chromosomes]
-    cinfo[, chrom_base := NULL]
+    if (exists("cinfo")) {
+        chrom_tag = unlist(strsplit(args$chrom_tag, ":"))
+        chromosomes = paste0("chr", c(1:as.numeric(chrom_tag[1]),
+            unlist(strsplit(chrom_tag[2], ","))))
+        cinfo$chrom_base = unlist(lapply(as.character(cinfo$chrom),
+            function(x) unlist(strsplit(x, "_", fixed=T))[1]))
+        cinfo = cinfo[chrom_base %in% chromosomes]
+        cinfo[, chrom_base := NULL]
+    }
 
 # Build bins -------------------------------------------------------------------
 
