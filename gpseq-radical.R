@@ -643,6 +643,13 @@ parser = argparser::add_argument(parser, arg="--export-level",
     help="Limits the amount of output. Use --more-help for more details",
     default=0)
 
+parser = argparser::add_argument(parser, arg="--chromosome-base-delim",
+    help="Delimi of chromosome base in chromosome name for patch recognition.",
+    default="_")
+parser = argparser::add_argument(parser,
+    arg="--chromosome-strict-match", flag=TRUE,
+    help="Use only chromosomes matching the expected names, discard patches.")
+
 parser = argparser::add_argument(parser, arg="--chromosome-wide", flag=TRUE,
     help="Use this option to calculate also on chromosome-wide bins.")
 parser = argparser::add_argument(parser, arg="--elongate-ter-bin", flag=TRUE,
@@ -816,8 +823,12 @@ if ("universal" == args$site_domain) {
         chromosomes = paste0("chr", c(1:as.numeric(chrom_tag[1]),
             unlist(strsplit(chrom_tag[2], ","))))
         cinfo$chrom_base = unlist(lapply(as.character(cinfo$chrom),
-            function(x) unlist(strsplit(x, "_", fixed=T))[1]))
-        cinfo = cinfo[chrom_base %in% chromosomes]
+            function(x) unlist(strsplit(x, args$chrom_base_delim, fixed=T))[1]))
+        if (args$chromosome_strict_match) {
+            cinfo = cinfo[chrom %in% chromosomes]
+        } else {
+            cinfo = cinfo[chrom_base %in% chromosomes]
+        }
         cinfo[, chrom_base := NULL]
     }
 
