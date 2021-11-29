@@ -8,7 +8,7 @@
 
 # UTILITIES ====================================================================
 
-version = "v0.0.7"
+version = "v0.0.8"
 if ("--version" %in% commandArgs(trailingOnly=TRUE)) {
     cat(sprintf("GPSeq-RadiCal %s\n\n", version))
     quit()
@@ -119,13 +119,17 @@ mk_genome_wide_bins = function(brid, bspecs, cinfo, args) {
         bins = data.table::rbindlist(list(bins[end<=size, .(chrom, start, end)],
             bins[end > size, .(start=min(start), end=size[1]), by=chrom]))
     }
-    bins = add_chrom_id(bins)
+    nchrom = as.numeric(strsplit(args$chrom_tag, ":")[[1]][1])
+    hetero = unlist(strsplit(strsplit(args$chrom_tag, ":")[[1]][2], ","))
+    bins = add_chrom_id(bins, "chrom", nchrom, hetero)
     bins[, chrom := reorder(chrom, chrom_id)]
     bins[, chrom_id := NULL]
     bins = bins[order(chrom, start)]
     bins$tag = bspecs[brid, paste0(
         scientific_with_signif_digits(size), ":",
         scientific_with_signif_digits(step))]
+    bins[, start := floor(start)]
+    bins[, end := ceiling(end)]
     return(bins)
 }
 
@@ -269,6 +273,8 @@ bin_bed_data = function(bbins, bd, args, site_universe=NULL) {
     binned = data.table::rbindlist(pbapply::pblapply(split(bd, bd$chrom),
         bin_chromosome, bbins, args, site_universe
         ))[order(tag, chrom, start, cid)]
+    binned[, start := floor(start)]
+    binned[, end := ceiling(end)]
     return(binned)
 }
 
@@ -317,7 +323,7 @@ bin_chromosome = function(
 
     combined = nreads[nsites]
     combined[, lib_nreads := as.numeric(args$total_lib_nreads)[cid]]
-    combined[, chr_nreads := as.numeric(args$total_chr_nreads[
+    combined[, chrom_nreads := as.numeric(args$total_chrom_nreads[
         selected_chromosome==chrom, .SD, .SDcols=args$cond_cols])[cid]]
 
     return(combined)
@@ -419,7 +425,7 @@ mask_binned_track = function(bbins, mask) {
     }
     data.table::setkeyv(bbins, bed3_colnames)
     masked = unique(data.table::foverlaps(bbins, mask)[,
-        .(tag, nreads, nsites, lib_nreads, chr_nreads,
+        .(tag, nreads, nsites, lib_nreads, chrom_nreads,
             mask_overlaps=.N, mask_overlapped=!is.na(start)),
         by=c(bed3_colnames[1], paste0("i.", bed3_colnames[2:3]),  "cid")])
     data.table::setnames(masked,
@@ -451,7 +457,7 @@ mask_binned = function(binned, args) {
 
 rescale_estimated = function(estimated, args) {
     logging::loginfo(sprintf("Rescaling estimates... [%s]", args$normalize_by))
-    if ("chr" == args$normalize_by) {
+    if ("chrom" == args$normalize_by) {
         if (args$chromosome_wide) logging::logwarn(
             "Skipped rescaling by chromosome for chromosome-wide bins.")
         rescaled = pbapply::pblapply(estimated, function(estmd) {
@@ -516,7 +522,7 @@ process_experiment = function(bbmeta, bins, args) {
 
         logging::loginfo(sprintf("Calculating normalization factors."))
         args$total_lib_nreads = bd[, lapply(.SD, sum), .SDcols=args$cond_cols]
-        args$total_chr_nreads = bd[, lapply(.SD, sum),
+        args$total_chrom_nreads = bd[, lapply(.SD, sum),
             by=chrom, .SDcols=args$cond_cols]
 
     # Masking bed --------------------------------------------------------------
@@ -609,7 +615,7 @@ parser = argparser::add_argument(parser, arg="--score-outlier-tag",
 
 parser = argparser::add_argument(parser, arg="--normalize-by", help=paste0(
         "Whether rescaling should be performed library-wise ('lib') ",
-        "or chromosome-wise ('chr')."),
+        "or chromosome-wise ('chrom')."),
     default="lib")
 
 parser = argparser::add_argument(parser, arg="--site-domain",
@@ -636,6 +642,13 @@ parser = argparser::add_argument(parser, arg="--threads", help=paste0(
 parser = argparser::add_argument(parser, arg="--export-level",
     help="Limits the amount of output. Use --more-help for more details",
     default=0)
+
+parser = argparser::add_argument(parser, arg="--chromosome-base-delim",
+    help="Delimi of chromosome base in chromosome name for patch recognition.",
+    default="_")
+parser = argparser::add_argument(parser,
+    arg="--chromosome-strict-match", flag=TRUE,
+    help="Use only chromosomes matching the expected names, discard patches.")
 
 parser = argparser::add_argument(parser, arg="--chromosome-wide", flag=TRUE,
     help="Use this option to calculate also on chromosome-wide bins.")
@@ -724,7 +737,7 @@ bed files in the input metadata file.
 }
 
 args = argparser::parse_args(parser)
-assert(args$normalize_by %in% c("chr", "lib"),
+assert(args$normalize_by %in% c("chrom", "lib"),
     sprintf("Unrecognized 'normalize_by' value: '%s'", args$normalize_by))
 assert(args$site_domain %in% c("separate", "union", "intersection", "universe"),
     sprintf("Unrecognized 'site_domain' value: '%s'", args$site_domain))
@@ -799,17 +812,25 @@ if ("universal" == args$site_domain) {
             cinfo[, c("width", "strand") := NULL]
         }
         assert(!is.null(cinfo), "Failed to build or retrieve chromosome info.")
+        assert(nrow(cinfo[start == 1]) == nrow(cinfo),
+            "Chromosome start should be 1.")
     }
 
 # Retain chromosomes according to chromosome tag -------------------------------
 
-    chrom_tag = unlist(strsplit(args$chrom_tag, ":"))
-    chromosomes = paste0("chr", c(1:as.numeric(chrom_tag[1]),
-        unlist(strsplit(chrom_tag[2], ","))))
-    cinfo$chrom_base = unlist(lapply(as.character(cinfo$chrom),
-        function(x) unlist(strsplit(x, "_", fixed=T))[1]))
-    cinfo = cinfo[chrom_base %in% chromosomes]
-    cinfo[, chrom_base := NULL]
+    if (exists("cinfo")) {
+        chrom_tag = unlist(strsplit(args$chrom_tag, ":"))
+        chromosomes = paste0("chr", c(1:as.numeric(chrom_tag[1]),
+            unlist(strsplit(chrom_tag[2], ","))))
+        cinfo$chrom_base = unlist(lapply(as.character(cinfo$chrom),
+            function(x) unlist(strsplit(x, args$chrom_base_delim, fixed=T))[1]))
+        if (args$chromosome_strict_match) {
+            cinfo = cinfo[chrom %in% chromosomes]
+        } else {
+            cinfo = cinfo[chrom_base %in% chromosomes]
+        }
+        cinfo[, chrom_base := NULL]
+    }
 
 # Build bins -------------------------------------------------------------------
 
