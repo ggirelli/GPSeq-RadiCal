@@ -323,7 +323,7 @@ bin_chromosome = function(
 
     combined = nreads[nsites]
     combined[, lib_nreads := as.numeric(args$total_lib_nreads)[cid]]
-    combined[, chr_nreads := as.numeric(args$total_chr_nreads[
+    combined[, chrom_nreads := as.numeric(args$total_chrom_nreads[
         selected_chromosome==chrom, .SD, .SDcols=args$cond_cols])[cid]]
 
     return(combined)
@@ -425,7 +425,7 @@ mask_binned_track = function(bbins, mask) {
     }
     data.table::setkeyv(bbins, bed3_colnames)
     masked = unique(data.table::foverlaps(bbins, mask)[,
-        .(tag, nreads, nsites, lib_nreads, chr_nreads,
+        .(tag, nreads, nsites, lib_nreads, chrom_nreads,
             mask_overlaps=.N, mask_overlapped=!is.na(start)),
         by=c(bed3_colnames[1], paste0("i.", bed3_colnames[2:3]),  "cid")])
     data.table::setnames(masked,
@@ -457,7 +457,7 @@ mask_binned = function(binned, args) {
 
 rescale_estimated = function(estimated, args) {
     logging::loginfo(sprintf("Rescaling estimates... [%s]", args$normalize_by))
-    if ("chr" == args$normalize_by) {
+    if ("chrom" == args$normalize_by) {
         if (args$chromosome_wide) logging::logwarn(
             "Skipped rescaling by chromosome for chromosome-wide bins.")
         rescaled = pbapply::pblapply(estimated, function(estmd) {
@@ -522,7 +522,7 @@ process_experiment = function(bbmeta, bins, args) {
 
         logging::loginfo(sprintf("Calculating normalization factors."))
         args$total_lib_nreads = bd[, lapply(.SD, sum), .SDcols=args$cond_cols]
-        args$total_chr_nreads = bd[, lapply(.SD, sum),
+        args$total_chrom_nreads = bd[, lapply(.SD, sum),
             by=chrom, .SDcols=args$cond_cols]
 
     # Masking bed --------------------------------------------------------------
@@ -615,7 +615,7 @@ parser = argparser::add_argument(parser, arg="--score-outlier-tag",
 
 parser = argparser::add_argument(parser, arg="--normalize-by", help=paste0(
         "Whether rescaling should be performed library-wise ('lib') ",
-        "or chromosome-wise ('chr')."),
+        "or chromosome-wise ('chrom')."),
     default="lib")
 
 parser = argparser::add_argument(parser, arg="--site-domain",
@@ -730,7 +730,7 @@ bed files in the input metadata file.
 }
 
 args = argparser::parse_args(parser)
-assert(args$normalize_by %in% c("chr", "lib"),
+assert(args$normalize_by %in% c("chrom", "lib"),
     sprintf("Unrecognized 'normalize_by' value: '%s'", args$normalize_by))
 assert(args$site_domain %in% c("separate", "union", "intersection", "universe"),
     sprintf("Unrecognized 'site_domain' value: '%s'", args$site_domain))
