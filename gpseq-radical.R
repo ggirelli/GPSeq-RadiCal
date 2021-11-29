@@ -119,7 +119,9 @@ mk_genome_wide_bins = function(brid, bspecs, cinfo, args) {
         bins = data.table::rbindlist(list(bins[end<=size, .(chrom, start, end)],
             bins[end > size, .(start=min(start), end=size[1]), by=chrom]))
     }
-    bins = add_chrom_id(bins)
+    nchrom = as.numeric(strsplit(args$chrom_tag, ":")[[1]][1])
+    hetero = unlist(strsplit(strsplit(args$chrom_tag, ":")[[1]][2], ","))
+    bins = add_chrom_id(bins, "chrom", nchrom, hetero)
     bins[, chrom := reorder(chrom, chrom_id)]
     bins[, chrom_id := NULL]
     bins = bins[order(chrom, start)]
