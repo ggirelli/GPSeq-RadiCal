@@ -8,7 +8,7 @@
 
 # UTILITIES ====================================================================
 
-version = "v0.0.8"
+version = "v0.0.9"
 if ("--version" %in% commandArgs(trailingOnly=TRUE)) {
     cat(sprintf("GPSeq-RadiCal %s\n\n", version))
     quit()
