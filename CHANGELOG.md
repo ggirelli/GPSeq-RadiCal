@@ -4,10 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] 
-### Fixed
+## [Unreleased]
+
+## [0.0.8] - 2021-11-29
+### Added
 - Added assertion for correct chromosome start position when using --cinfo-path.
+- Options for stricter chromosome matching (discards patches).
+### Fixed
 - Enforced integer bed coordinates when using --bin-bed.
+- Using specified chromosome number and heterosome names when binning.
 
 ## [0.0.7] - 2021-10-12
 ### Changed
@@ -73,6 +78,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.0.1] - 2020-07-15
 
 [Unreleased]: https://github.com/ggirelli/gpseq-img-py  
+[0.0.8]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.8  
 [0.0.7]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.7  
 [0.0.6]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.6  
 [0.0.5]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.5  
