@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.9] - 2021-11-30
+### Fixed
+- Wrong variable name causing no chromosomes to be retained in chromosome info table.
+
 ## [0.0.8] - 2021-11-29
 ### Added
 - Added assertion for correct chromosome start position when using --cinfo-path.
@@ -78,6 +82,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.0.1] - 2020-07-15
 
 [Unreleased]: https://github.com/ggirelli/gpseq-img-py  
+[0.0.9]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.9  
 [0.0.8]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.8  
 [0.0.7]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.7  
 [0.0.6]: https://github.com/ggirelli/gpseq-radical/releases/tag/v0.0.6  

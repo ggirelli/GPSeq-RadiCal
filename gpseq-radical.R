@@ -8,7 +8,7 @@
 
 # UTILITIES ====================================================================
 
-version = "v0.0.8"
+version = "v0.0.9"
 if ("--version" %in% commandArgs(trailingOnly=TRUE)) {
     cat(sprintf("GPSeq-RadiCal %s\n\n", version))
     quit()
@@ -823,7 +823,7 @@ if ("universal" == args$site_domain) {
         chromosomes = paste0("chr", c(1:as.numeric(chrom_tag[1]),
             unlist(strsplit(chrom_tag[2], ","))))
         cinfo$chrom_base = unlist(lapply(as.character(cinfo$chrom),
-            function(x) unlist(strsplit(x, args$chrom_base_delim, fixed=T))[1]))
+            function(x) unlist(strsplit(x, args$chromosome_base_delim, fixed=T))[1]))
         if (args$chromosome_strict_match) {
             cinfo = cinfo[chrom %in% chromosomes]
         } else {
